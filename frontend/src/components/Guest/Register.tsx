@@ -6,23 +6,43 @@ import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
 import GoogleLoginButton from './GoogleLoginButton'
+import { Alert, AlertDescription } from '../ui/alert'
+import { InfoCircledIcon } from '@radix-ui/react-icons'
 
 const Register = () => {
-  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const { register: registerUser } = useAuth()
   const navigate = useNavigate()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError(null)
     setIsLoading(true)
+
     try {
       await registerUser(email, password)
       navigate('/home')
-    } catch (error) {
-      console.error('Registration failed:', error)
+    } catch (err) {
+      let errorMessage = 'Не удалось зарегистрироваться. Пожалуйста, попробуйте снова'
+
+      if (err instanceof Error) {
+        if (err.message.includes('email already in use')) {
+          errorMessage = 'Этот email уже используется'
+        } else if (err.message.includes('weak password')) {
+          errorMessage = 'Пароль должен содержать не менее 6 символов'
+        } else if (err.message.includes('invalid email')) {
+          errorMessage = 'Неверный формат email'
+        } else {
+          errorMessage = err.message || errorMessage
+        }
+      } else if (typeof err === 'string') {
+        errorMessage = err
+      }
+
+      setError(errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -36,7 +56,7 @@ const Register = () => {
         transition={{ duration: 0.5 }}
         className="w-full max-w-md"
       >
-        <Card className="border-0 shadow-2xl">
+        <Card className="border-0 shadow-lg">
           <CardHeader className="space-y-1 text-center">
             <CardTitle className="font-display text-2xl">Создать аккаунт</CardTitle>
             <CardDescription>
@@ -45,16 +65,6 @@ const Register = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Input
-                  id="name"
-                  placeholder="Ваше имя"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  className="h-11"
-                />
-              </div>
               <div className="space-y-2">
                 <Input
                   id="email"
@@ -80,8 +90,17 @@ const Register = () => {
               <Button type="submit" className="w-full h-11" disabled={isLoading}>
                 {isLoading ? 'Создание аккаунта...' : 'Создать аккаунт'}
               </Button>
+
+              {error && (
+                <Alert variant="default" className="bg-blue-50 border-blue-200">
+                  <InfoCircledIcon className="h-4 w-4 text-blue-600" />
+                  <AlertDescription className="text-blue-800">
+                    {error}
+                  </AlertDescription>
+                </Alert>
+              )}
             </form>
-            
+
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t" />
@@ -90,12 +109,16 @@ const Register = () => {
                 <span className="bg-background px-2 text-muted-foreground">или</span>
               </div>
             </div>
-            
+
             <GoogleLoginButton />
-            
+
             <p className="text-center text-sm text-muted-foreground">
               Уже есть аккаунт?{' '}
-              <Link to="/login" className="font-medium text-primary hover:underline">
+              <Link 
+                to="/login" 
+                className="font-medium text-primary hover:underline"
+                onClick={() => setError(null)}
+              >
                 Войти
               </Link>
             </p>

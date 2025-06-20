@@ -6,22 +6,43 @@ import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
 import GoogleLoginButton from './GoogleLoginButton'
+import { Alert, AlertDescription } from '../ui/alert'
+import { InfoCircledIcon } from '@radix-ui/react-icons' // Изменили иконку
 
 const Login = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const { login } = useAuth()
   const navigate = useNavigate()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError(null)
     setIsLoading(true)
+    
     try {
       await login(email, password)
       navigate('/home')
-    } catch (error) {
-      console.error('Login failed:', error)
+    } catch (err) {
+      let errorMessage = 'Не удалось войти. Пожалуйста, проверьте данные'
+      
+      if (err instanceof Error) {
+        if (err.message.includes('Invalid credentials')) {
+          errorMessage = 'Неверный email или пароль'
+        } else if (err.message.includes('User not found')) {
+          errorMessage = 'Пользователь не найден'
+        } else if (err.message.includes('Incorrect password')) {
+          errorMessage = 'Неверный пароль'
+        } else {
+          errorMessage = err.message || errorMessage
+        }
+      } else if (typeof err === 'string') {
+        errorMessage = err
+      }
+      
+      setError(errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -35,7 +56,7 @@ const Login = () => {
         transition={{ duration: 0.5 }}
         className="w-full max-w-md"
       >
-        <Card className="border-0 shadow-2xl">
+        <Card className="border-0 shadow-lg"> 
           <CardHeader className="space-y-1 text-center">
             <CardTitle className="font-display text-2xl">Добро пожаловать</CardTitle>
             <CardDescription>
@@ -69,6 +90,14 @@ const Login = () => {
               <Button type="submit" className="w-full h-11" disabled={isLoading}>
                 {isLoading ? 'Вход...' : 'Войти'}
               </Button>
+              {error && (
+              <Alert variant="default" className="bg-blue-50 border-blue-200">
+                <InfoCircledIcon className="h-4 w-4 text-blue-600" /> 
+                <AlertDescription className="text-blue-800">
+                  {error}
+                </AlertDescription>
+              </Alert>
+            )}
             </form>
             
             <div className="relative">
@@ -84,7 +113,11 @@ const Login = () => {
             
             <p className="text-center text-sm text-muted-foreground">
               Нет аккаунта?{' '}
-              <Link to="/register" className="font-medium text-primary hover:underline">
+              <Link 
+                to="/register" 
+                className="font-medium text-primary hover:underline"
+                onClick={() => setError(null)}
+              >
                 Зарегистрируйтесь
               </Link>
             </p>

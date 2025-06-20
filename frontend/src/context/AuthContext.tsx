@@ -42,7 +42,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   useEffect(() => {
-    // On mount attempt to load profile if tokens exist
     const { access } = getStoredTokens()
     if (access) {
       fetchMe()
