@@ -1,0 +1,31 @@
+from sqlalchemy import Column, Integer, String, Float, Text, DateTime
+from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
+
+from app.core.database import Base
+from app.db.models.associations import user_favorite_items
+
+class Item(Base):
+    __tablename__ = "items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False, index=True)
+    brand = Column(String(50), nullable=True, index=True)
+    color = Column(String(30), nullable=True)
+    image_url = Column(String(255), nullable=True)
+    description = Column(Text, nullable=True)
+    price = Column(Float, nullable=True, index=True)
+    category = Column(String(50), nullable=True, index=True)
+    article = Column(String(50), nullable=True, index=True)
+    size = Column(String(10), nullable=True, index=True)
+    style = Column(String(50), nullable=True, index=True)
+    collection = Column(String(100), nullable=True, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    liked_by = relationship(
+        "User",
+        secondary=user_favorite_items,
+        back_populates="favorites",
+        lazy="dynamic",
+    )
