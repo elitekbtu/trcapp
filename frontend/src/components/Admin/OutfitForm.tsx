@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { motion } from 'framer-motion'
+import { Loader2, ArrowLeft, Save } from 'lucide-react'
 import {
   createOutfit,
   updateOutfit,
@@ -7,6 +9,12 @@ import {
   type OutfitCreate,
   type OutfitUpdate,
 } from '../../api/outfits'
+import { Button } from '../../components/ui/button'
+import { Input } from '../../components/ui/input'
+import { Textarea } from '../../components/ui/textarea'
+import { Label } from '../../components/ui/label'
+import { useToast } from '../../components/ui/use-toast'
+import { cn } from '../../lib/utils'
 
 const emptyOutfit: OutfitCreate = {
   name: '',
@@ -22,16 +30,18 @@ const emptyOutfit: OutfitCreate = {
 const OutfitForm = () => {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
+  const { toast } = useToast()
   const isEdit = !!id
 
   const [form, setForm] = useState<OutfitCreate>(emptyOutfit)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    if (isEdit) {
-      getOutfit(Number(id))
-        .then((data) => {
+    const fetchOutfit = async () => {
+      try {
+        if (isEdit) {
+          const data = await getOutfit(Number(id))
           setForm({
             name: data.name,
             style: data.style,
@@ -42,13 +52,20 @@ const OutfitForm = () => {
             accessories_ids: data.accessories.map((a) => a.id),
             fragrances_ids: data.fragrances.map((fr) => fr.id),
           })
+        }
+      } catch (error) {
+        toast({
+          variant: 'destructive',
+          title: 'Ошибка',
+          description: 'Не удалось загрузить данные об образе',
         })
-        .catch(() => setError('Не удалось загрузить образ'))
-        .finally(() => setLoading(false))
-    } else {
-      setLoading(false)
+      } finally {
+        setLoading(false)
+      }
     }
-  }, [id])
+
+    fetchOutfit()
+  }, [id, isEdit, toast])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -66,95 +83,167 @@ const OutfitForm = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setSubmitting(true)
+
     try {
       if (isEdit) {
         const payload: OutfitUpdate = { ...form }
         await updateOutfit(Number(id), payload)
+        toast({
+          title: 'Успешно',
+          description: 'Образ успешно обновлен',
+        })
       } else {
         await createOutfit(form)
+        toast({
+          title: 'Успешно',
+          description: 'Образ успешно создан',
+        })
       }
       navigate('/admin/outfits')
-    } catch (err) {
-      console.error(err)
-      setError('Ошибка при сохранении')
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Ошибка',
+        description: 'Произошла ошибка при сохранении',
+      })
+    } finally {
+      setSubmitting(false)
     }
   }
 
-  if (loading) return <div className="py-8 text-center">Загрузка...</div>
-  if (error) return <div className="py-8 text-center text-red-600">{error}</div>
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
 
   return (
-    <div className="max-w-xl mx-auto">
-      <h1 className="mb-4 text-2xl font-semibold">{isEdit ? 'Редактировать образ' : 'Создать образ'}</h1>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium">Название*</label>
-          <input
-            type="text"
-            name="name"
-            value={form.name}
-            onChange={handleChange}
-            required
-            className="mt-1 w-full rounded border p-2"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium">Стиль*</label>
-          <input
-            type="text"
-            name="style"
-            value={form.style}
-            onChange={handleChange}
-            required
-            className="mt-1 w-full rounded border p-2"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium">Описание</label>
-          <textarea
-            name="description"
-            value={form.description || ''}
-            onChange={handleChange}
-            className="mt-1 w-full rounded border p-2"
-            rows={3}
-          />
-        </div>
-        {/* IDs inputs */}
-        {(
-          [
-            { key: 'top_ids', label: 'ID верха' },
-            { key: 'bottom_ids', label: 'ID низа' },
-            { key: 'footwear_ids', label: 'ID обуви' },
-            { key: 'accessories_ids', label: 'ID аксессуаров' },
-            { key: 'fragrances_ids', label: 'ID ароматов' },
-          ] as const
-        ).map((field) => (
-          <div key={field.key}>
-            <label className="block text-sm font-medium">{field.label} (через запятую)</label>
-            <input
-              type="text"
-              value={(form[field.key] ?? []).join(', ')}
-              onChange={(e) => handleIdsChange(field.key, e.target.value)}
-              className="mt-1 w-full rounded border p-2"
-            />
-          </div>
-        ))}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="container mx-auto max-w-3xl px-4 py-8"
+    >
+      <div className="mb-8 flex items-center gap-4">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => navigate('/admin/outfits')}
+          className="shrink-0 hover:bg-accent/50"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">
+          {isEdit ? 'Редактирование образа' : 'Создание нового образа'}
+        </h1>
+      </div>
 
-        <div className="flex justify-end gap-2">
-          <button
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="rounded-xl border bg-card p-6 shadow-sm">
+          <h2 className="mb-6 text-xl font-semibold text-foreground">Основная информация</h2>
+          
+          <div className="space-y-6">
+            <div className="space-y-3">
+              <Label htmlFor="name" className="text-sm font-medium text-muted-foreground">
+                Название*
+              </Label>
+              <Input
+                id="name"
+                name="name"
+                value={form.name}
+                onChange={handleChange}
+                required
+                placeholder="Название образа"
+                className="focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+            </div>
+
+            <div className="space-y-3">
+              <Label htmlFor="style" className="text-sm font-medium text-muted-foreground">
+                Стиль*
+              </Label>
+              <Input
+                id="style"
+                name="style"
+                value={form.style}
+                onChange={handleChange}
+                required
+                placeholder="Стиль образа"
+                className="focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+            </div>
+
+            <div className="space-y-3">
+              <Label htmlFor="description" className="text-sm font-medium text-muted-foreground">
+                Описание
+              </Label>
+              <Textarea
+                id="description"
+                name="description"
+                value={form.description || ''}
+                onChange={handleChange}
+                placeholder="Описание образа"
+                rows={4}
+                className="min-h-[120px] focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-xl border bg-card p-6 shadow-sm">
+          <h2 className="mb-6 text-xl font-semibold text-foreground">Состав образа</h2>
+          
+          <div className="grid gap-6 md:grid-cols-2">
+            {(
+              [
+                { key: 'top_ids', label: 'ID верха' },
+                { key: 'bottom_ids', label: 'ID низа' },
+                { key: 'footwear_ids', label: 'ID обуви' },
+                { key: 'accessories_ids', label: 'ID аксессуаров' },
+                { key: 'fragrances_ids', label: 'ID ароматов' },
+              ] as const
+            ).map((field) => (
+              <div key={field.key} className="space-y-3">
+                <Label htmlFor={field.key} className="text-sm font-medium text-muted-foreground">
+                  {field.label} (через запятую)
+                </Label>
+                <Input
+                  id={field.key}
+                  value={(form[field.key] ?? []).join(', ')}
+                  onChange={(e) => handleIdsChange(field.key, e.target.value)}
+                  placeholder="Например: 123, 456, 789"
+                  className="focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3">
+          <Button
             type="button"
-            className="rounded border px-4 py-2"
+            variant="outline"
             onClick={() => navigate('/admin/outfits')}
+            className="border-muted-foreground/30 hover:bg-muted/50"
           >
             Отмена
-          </button>
-          <button type="submit" className="rounded bg-blue-600 px-4 py-2 text-white">
-            Сохранить
-          </button>
+          </Button>
+          <Button 
+            type="submit" 
+            disabled={submitting}
+            className="bg-primary hover:bg-primary/90"
+          >
+            {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Save className={cn('h-4 w-4', !submitting && 'mr-2')} />
+            {submitting ? 'Сохранение...' : 'Сохранить'}
+          </Button>
         </div>
       </form>
-    </div>
+    </motion.div>
   )
 }
 
-export default OutfitForm 
+export default OutfitForm
