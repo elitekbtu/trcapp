@@ -20,7 +20,21 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
+    "noUncheckedSideEffectImports": true,
+
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@app/*": ["src/app/*"],
+      "@entities/*": ["src/entities/*"],
+      "@features/*": ["src/features/*"],
+      "@shared/*": ["src/shared/*"],
+      "@app": ["src/app/index.ts"],
+      "@entities": ["src/entities/index.ts"],
+      "@features": ["src/features/index.ts"],
+      "@shared": ["src/shared/index.ts"]
+    },
+    "types": ["node"]
   },
   "include": ["src"]
 }

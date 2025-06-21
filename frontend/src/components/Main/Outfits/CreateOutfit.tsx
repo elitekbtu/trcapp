@@ -39,7 +39,7 @@ const CreateOutfit = () => {
   useEffect(() => {
     const fetchAll = async () => {
       try {
-        const promises = categoryConfig.map((c) => listItems({ category: c.apiCategory, limit: 50 }))
+        const promises = categoryConfig.map((c) => listItems({ clothing_type: c.apiType, limit: 50 }))
         const results = await Promise.all(promises)
         const grouped: Record<string, ItemOut[]> = {}
         const idx: IndexState = {}

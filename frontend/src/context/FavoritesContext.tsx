@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { toggleFavoriteItem as apiToggleFavoriteItem, listFavoriteItems } from '../api/items'
+import { useAuth } from './AuthContext'
 
 interface FavoritesState {
   favoriteIds: number[]
@@ -11,23 +12,38 @@ interface FavoritesState {
 const FavoritesContext = createContext<FavoritesState | undefined>(undefined)
 
 export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth()
+
   const [favoriteIds, setFavoriteIds] = useState<number[]>([])
   const [loading, setLoading] = useState(true)
 
+  // Load favorites when user changes (login/logout)
   useEffect(() => {
-    ;(async () => {
-      try {
-        const fav = await listFavoriteItems()
-        setFavoriteIds(fav.map((i) => i.id))
-      } catch (err) {
-        console.error(err)
-      } finally {
+    const load = async () => {
+      setLoading(true)
+      if (user) {
+        try {
+          const fav = await listFavoriteItems()
+          setFavoriteIds(fav.map((i) => i.id))
+        } catch (err) {
+          // Ignore 401 or other errors silently for guests
+          setFavoriteIds([])
+          console.error(err)
+        } finally {
+          setLoading(false)
+        }
+      } else {
+        // Guest – just empty list
+        setFavoriteIds([])
         setLoading(false)
       }
-    })()
-  }, [])
+    }
+    load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
 
   const toggleFavorite: FavoritesState['toggleFavorite'] = async (id) => {
+    if (!user) return // guests can't favorite
     try {
       const resp = await apiToggleFavoriteItem(id)
       setFavoriteIds((prev) => {

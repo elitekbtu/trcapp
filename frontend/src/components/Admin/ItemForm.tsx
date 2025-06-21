@@ -20,6 +20,7 @@ const emptyItem: ItemCreate = {
   name: '',
   brand: '',
   color: '',
+  clothing_type: 'top',
   image_url: '',
   description: '',
   price: undefined,
@@ -62,7 +63,7 @@ const ItemForm = () => {
     fetchItem()
   }, [id, isEdit, toast])
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setForm((prev) => ({ ...prev, [name]: value }))
   }
@@ -195,6 +196,26 @@ const ItemForm = () => {
                 placeholder="Категория"
                 className="focus:border-primary focus:ring-1 focus:ring-primary"
               />
+            </div>
+
+            <div className="space-y-3">
+              <Label htmlFor="clothing_type" className="text-sm font-medium text-muted-foreground">
+                Тип одежды (top, bottom...)
+              </Label>
+              <select
+                id="clothing_type"
+                name="clothing_type"
+                value={form.clothing_type}
+                onChange={handleChange}
+                required
+                className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary"
+              >
+                <option value="top">Верх</option>
+                <option value="bottom">Низ</option>
+                <option value="accessories">Аксессуары</option>
+                <option value="footwear">Обувь</option>
+                <option value="fragrances">Ароматы</option>
+              </select>
             </div>
 
             <div className="space-y-3">

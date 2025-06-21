@@ -1,10 +1,12 @@
 import api from './client'
+import type { ClothingType } from '../constants'
 
 // Shared base properties for an Item
 interface ItemBase {
   name: string
   brand?: string
   color?: string
+  clothing_type?: ClothingType
   image_url?: string
   description?: string
   price?: number
@@ -22,6 +24,7 @@ export interface ItemOut extends ItemBase {
   created_at?: string
   updated_at?: string
   image_urls?: string[]
+  clothing_type?: ClothingType
 }
 
 export interface ListItemsParams {
@@ -35,6 +38,7 @@ export interface ListItemsParams {
   max_price?: number
   size?: string
   sort_by?: string
+  clothing_type?: ClothingType
 }
 
 export const listItems = async (params: ListItemsParams = {}) => {

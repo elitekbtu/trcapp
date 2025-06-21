@@ -2,14 +2,15 @@ import { useEffect, useState } from 'react'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { listItems, type ItemOut } from '../../../api/items'
 import { Button } from '../../ui/button'
+import { useTranslation } from 'react-i18next'
 
-// Mapping for UI labels and API categories
+// Mapping for UI labels and API clothing types
 export const categoryConfig = [
-  { key: 'tops', apiCategory: 'top', label: 'Верх' },
-  { key: 'accessories', apiCategory: 'accessories', label: 'Аксессуары' },
-  { key: 'bottoms', apiCategory: 'bottom', label: 'Низ' },
-  { key: 'footwear', apiCategory: 'footwear', label: 'Обувь' },
-  { key: 'fragrances', apiCategory: 'fragrances', label: 'Ароматы' },
+  { key: 'tops', apiType: 'top', label: 'Верх' },
+  { key: 'accessories', apiType: 'accessories', label: 'Аксессуары' },
+  { key: 'bottoms', apiType: 'bottom', label: 'Низ' },
+  { key: 'footwear', apiType: 'footwear', label: 'Обувь' },
+  { key: 'fragrances', apiType: 'fragrances', label: 'Ароматы' },
 ] as const
 
 type CategoryKey = (typeof categoryConfig)[number]['key']
@@ -22,12 +23,13 @@ const OutfitBuilder = () => {
   const [itemsByCat, setItemsByCat] = useState<Record<string, ItemOut[]>>({})
   const [indexByCat, setIndexByCat] = useState<IndexState>({})
   const [loading, setLoading] = useState(true)
+  const { t } = useTranslation()
 
   useEffect(() => {
     const fetchAll = async () => {
       try {
         const promises = categoryConfig.map((c) =>
-          listItems({ category: c.apiCategory, limit: 50 })
+          listItems({ clothing_type: c.apiType, limit: 50 })
         )
         const results = await Promise.all(promises)
         const grouped: Record<string, ItemOut[]> = {}
@@ -61,7 +63,7 @@ const OutfitBuilder = () => {
   const mannequinUrl = 'https://i.imgur.com/xXTcmEf.png' // Transparent mannequin silhouette
 
   if (loading) {
-    return <div className="flex h-64 items-center justify-center">Загрузка...</div>
+    return <div className="flex h-64 items-center justify-center">{t('common.loading')}</div>
   }
 
   return (
@@ -123,7 +125,7 @@ const OutfitBuilder = () => {
                     <span className="truncate text-sm">{selected.name}</span>
                   </>
                 ) : (
-                  <span className="text-sm text-muted-foreground">Нет вариантов</span>
+                  <span className="text-sm text-muted-foreground">{t('outfitBuilder.noOptions')}</span>
                 )}
               </div>
 
