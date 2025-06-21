@@ -14,6 +14,13 @@ from app.core.database import get_db
 from app.db.models.item import Item
 from app.core.security import require_admin, get_current_user_optional, get_current_user
 from app.db.models.user import User
+from app.db.models.outfit import (
+        outfit_top_association,
+        outfit_bottom_association,
+        outfit_footwear_association,
+        outfit_accessories_association,
+        outfit_fragrances_association,
+    )
 
 router = APIRouter(
     prefix="/api/items",
@@ -297,7 +304,33 @@ def delete_item(item_id: int, db: Session = Depends(get_db)):
     item = db.query(Item).filter(Item.id == item_id).first()
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
-    
+
+    # 1. Удаляем файлы изображений, связанные с Item
+    _remove_upload_file(item.image_url)
+    for img in item.images:
+        _remove_upload_file(img.image_url)
+
+    # 2. Очистка сущностей, которые не имеют CASCADE в существующей схеме (на случай старой БД)
+    from app.db.models.associations import UserView, user_favorite_items
+    from app.db.models.cart import CartItem
+    # Просмотры
+    db.query(UserView).filter(UserView.item_id == item.id).delete()
+    # Корзины
+    db.query(CartItem).filter(CartItem.item_id == item.id).delete()
+    # Фавориты (raw execute для таблицы через Table object)
+    db.execute(user_favorite_items.delete().where(user_favorite_items.c.item_id == item.id))
+
+    # 3. Удаляем из всех outfit-association таблиц
+    for assoc in [
+        outfit_top_association,
+        outfit_bottom_association,
+        outfit_footwear_association,
+        outfit_accessories_association,
+        outfit_fragrances_association,
+    ]:
+        db.execute(assoc.delete().where(assoc.c.item_id == item.id))
+
+    # 4. Удаляем сам объект (каскадные связи ItemImage / Comment сработают через ORM)
     db.delete(item)
     db.commit()
     return None
@@ -415,3 +448,18 @@ def _comment_with_likes(comment: Comment):
     data = CommentOut.from_orm(comment)
     data.likes = comment.liked_by.count() if hasattr(comment.liked_by, 'count') else 0
     return data
+
+def _remove_upload_file(url: str):
+    """Удалить файл, сохранённый в каталоге uploads, если он существует."""
+    if not url:
+        return
+    # Ожидаемый формат: /uploads/items/...
+    if url.startswith("/uploads/"):
+        # Превращаем URL в относительный путь к файлу
+        rel_path = url.lstrip("/")
+        if os.path.exists(rel_path):
+            try:
+                os.remove(rel_path)
+            except OSError:
+                # Логировать можно, но не останавливаем процесс удаления записи
+                pass

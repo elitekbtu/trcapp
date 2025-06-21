@@ -8,32 +8,32 @@ from app.db.models.associations import user_favorite_outfits
 # Association tables
 outfit_top_association = Table(
     'outfit_top_association', Base.metadata,
-    Column('outfit_id', Integer, ForeignKey('outfits.id')),
-    Column('item_id', Integer, ForeignKey('items.id'))
+    Column('outfit_id', Integer, ForeignKey('outfits.id', ondelete='CASCADE')),
+    Column('item_id', Integer, ForeignKey('items.id', ondelete='CASCADE'))
 )
 
 outfit_bottom_association = Table(
     'outfit_bottom_association', Base.metadata,
-    Column('outfit_id', Integer, ForeignKey('outfits.id')),
-    Column('item_id', Integer, ForeignKey('items.id'))
+    Column('outfit_id', Integer, ForeignKey('outfits.id', ondelete='CASCADE')),
+    Column('item_id', Integer, ForeignKey('items.id', ondelete='CASCADE'))
 )
 
 outfit_footwear_association = Table(
     'outfit_footwear_association', Base.metadata,
-    Column('outfit_id', Integer, ForeignKey('outfits.id')),
-    Column('item_id', Integer, ForeignKey('items.id'))
+    Column('outfit_id', Integer, ForeignKey('outfits.id', ondelete='CASCADE')),
+    Column('item_id', Integer, ForeignKey('items.id', ondelete='CASCADE'))
 )
 
 outfit_accessories_association = Table(
     'outfit_accessories_association', Base.metadata,
-    Column('outfit_id', Integer, ForeignKey('outfits.id')),
-    Column('item_id', Integer, ForeignKey('items.id'))
+    Column('outfit_id', Integer, ForeignKey('outfits.id', ondelete='CASCADE')),
+    Column('item_id', Integer, ForeignKey('items.id', ondelete='CASCADE'))
 )
 
 outfit_fragrances_association = Table(
     'outfit_fragrances_association', Base.metadata,
-    Column('outfit_id', Integer, ForeignKey('outfits.id')),
-    Column('item_id', Integer, ForeignKey('items.id'))
+    Column('outfit_id', Integer, ForeignKey('outfits.id', ondelete='CASCADE')),
+    Column('item_id', Integer, ForeignKey('items.id', ondelete='CASCADE'))
 )
 
 class Outfit(Base):

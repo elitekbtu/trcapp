@@ -8,8 +8,8 @@ from app.core.database import Base
 user_favorite_items = Table(
     "user_favorite_items",
     Base.metadata,
-    Column("user_id", Integer, ForeignKey("users.id"), primary_key=True),
-    Column("item_id", Integer, ForeignKey("items.id"), primary_key=True),
+    Column("user_id", Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("item_id", Integer, ForeignKey("items.id", ondelete="CASCADE"), primary_key=True),
     Column("created_at", DateTime(timezone=True), server_default=func.now()),
 )
 
@@ -19,8 +19,8 @@ user_favorite_items = Table(
 user_favorite_outfits = Table(
     "user_favorite_outfits",
     Base.metadata,
-    Column("user_id", Integer, ForeignKey("users.id"), primary_key=True),
-    Column("outfit_id", Integer, ForeignKey("outfits.id"), primary_key=True),
+    Column("user_id", Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("outfit_id", Integer, ForeignKey("outfits.id", ondelete="CASCADE"), primary_key=True),
     Column("created_at", DateTime(timezone=True), server_default=func.now()),
 )
 
@@ -28,8 +28,8 @@ user_favorite_outfits = Table(
 comment_likes = Table(
     "comment_likes",
     Base.metadata,
-    Column("user_id", Integer, ForeignKey("users.id"), primary_key=True),
-    Column("comment_id", Integer, ForeignKey("comments.id"), primary_key=True),
+    Column("user_id", Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("comment_id", Integer, ForeignKey("comments.id", ondelete="CASCADE"), primary_key=True),
     Column("created_at", DateTime(timezone=True), server_default=func.now()),
 )
 
@@ -38,8 +38,8 @@ class UserView(Base):
     __tablename__ = "user_view_history"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    item_id = Column(Integer, ForeignKey("items.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    item_id = Column(Integer, ForeignKey("items.id", ondelete="CASCADE"), nullable=False, index=True)
     viewed_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
 
     # Relationships
@@ -51,8 +51,8 @@ class OutfitView(Base):
     __tablename__ = "outfit_view_history"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    outfit_id = Column(Integer, ForeignKey("outfits.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    outfit_id = Column(Integer, ForeignKey("outfits.id", ondelete="CASCADE"), nullable=False, index=True)
     viewed_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
 
     user = relationship("User", back_populates="outfit_view_history")

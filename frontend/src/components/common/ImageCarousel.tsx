@@ -29,7 +29,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ images, className = '', a
   }
 
   return (
-    <div className={`relative overflow-hidden ${aspectClassName} ${className}`}>{
+    <div className={`relative overflow-hidden rounded-md border border-border bg-background ${aspectClassName} ${className}`}>{
       /* Wrapper for correct aspect ratio */
     }
       <AnimatePresence custom={direction} initial={false}>
@@ -53,9 +53,20 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ images, className = '', a
               paginate(-1)
             }
           }}
-          className="h-full w-full object-cover select-none"
+          className="h-full w-full object-contain select-none"
         />
       </AnimatePresence>
+      {/* Pagination Dots */}
+      {images.length > 1 && (
+        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex justify-center gap-1 rounded-full bg-black/30 px-2 py-1 backdrop-blur-sm">
+          {images.map((_, idx) => (
+            <span
+              key={idx}
+              className={`block h-1.5 w-1.5 rounded-full transition-colors ${idx === imageIndex ? 'bg-white/90' : 'bg-white/40'}`}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
