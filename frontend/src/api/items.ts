@@ -73,4 +73,62 @@ export const similarItems = async (id: number, limit?: number) => {
 export const itemsByCollection = async (name: string) => {
   const resp = await api.get<ItemOut[]>('/api/items/collections', { params: { name } })
   return resp.data
+}
+
+// ---------- Favorites ----------
+
+export const toggleFavoriteItem = async (id: number) => {
+  const resp = await api.post<{ favorited: boolean }>(`/api/items/${id}/favorite`, {})
+  return resp.data
+}
+
+export const listFavoriteItems = async () => {
+  const resp = await api.get<ItemOut[]>('/api/items/favorites')
+  return resp.data
+}
+
+// ---------- View History ----------
+
+export const viewHistoryItems = async (limit = 50) => {
+  const resp = await api.get<ItemOut[]>('/api/items/history', { params: { limit } })
+  return resp.data
+}
+
+export const clearHistoryItems = async () => {
+  await api.delete('/api/items/history')
+}
+
+// ---------- Comments ----------
+
+export interface CommentCreate {
+  content: string
+  rating?: number
+}
+
+export interface CommentOut extends CommentCreate {
+  id: number
+  user_id: number
+  created_at: string
+  likes: number
+}
+
+export const listItemComments = async (itemId: number) => {
+  const resp = await api.get<CommentOut[]>(`/api/items/${itemId}/comments`)
+  return resp.data
+}
+
+export const addItemComment = async (itemId: number, data: CommentCreate) => {
+  const resp = await api.post<CommentOut>(`/api/items/${itemId}/comments`, data)
+  return resp.data
+}
+
+export const likeItemComment = async (itemId: number, commentId: number) => {
+  const resp = await api.post<{ liked: boolean }>(`/api/items/${itemId}/comments/${commentId}/like`, {})
+  return resp.data
+}
+
+// ---------- Delete Comment ----------
+
+export const deleteItemComment = async (itemId: number, commentId: number) => {
+  await api.delete(`/api/items/${itemId}/comments/${commentId}`)
 } 

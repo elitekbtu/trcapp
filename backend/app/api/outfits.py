@@ -2,7 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, root_validator
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, and_
+from sqlalchemy import or_, and_, func, desc
 from datetime import datetime
 
 from app.core.database import get_db
@@ -10,6 +10,8 @@ from app.db.models.outfit import Outfit
 from app.db.models.item import Item
 from app.core.security import get_current_user, is_admin, get_current_user_optional
 from app.db.models.user import User
+from app.db.models.associations import user_favorite_outfits, OutfitView
+from app.db.models.comment import Comment
 
 router = APIRouter(
     prefix="/api/outfits",
@@ -158,11 +160,45 @@ def list_outfits(
     
     return result
 
+# ---------- Favorites & History (static routes placed BEFORE /{outfit_id} to avoid conflicts) ----------
+
+@router.get("/favorites", response_model=List[OutfitOut])
+def list_favorite_outfits(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return [_calculate_outfit_price(o) for o in user.favorite_outfits.all()]
+
+@router.get("/history", response_model=List[OutfitOut])
+def viewed_outfits(limit: int = 50, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    views = (
+        db.query(OutfitView)
+        .filter(OutfitView.user_id == user.id)
+        .order_by(OutfitView.viewed_at.desc())
+        .limit(limit)
+        .all()
+    )
+    outfit_ids = [v.outfit_id for v in views]
+    if not outfit_ids:
+        return []
+    outfits = db.query(Outfit).filter(Outfit.id.in_(outfit_ids)).all()
+    return [_calculate_outfit_price(o) for o in outfits]
+
+@router.delete("/history", status_code=status.HTTP_204_NO_CONTENT)
+def clear_outfit_view_history(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    from app.db.models.associations import OutfitView
+    db.query(OutfitView).filter(OutfitView.user_id == user.id).delete()
+    db.commit()
+    return None
+
 @router.get("/{outfit_id}", response_model=OutfitOut)
 def get_outfit(outfit_id: int, db: Session = Depends(get_db), user: Optional[User] = Depends(get_current_user_optional)):
     outfit = db.query(Outfit).filter(Outfit.id == outfit_id).first()
     if not outfit:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Outfit not found")
+
+    # Log view for authenticated users
+    if user:
+        db.add(OutfitView(user_id=user.id, outfit_id=outfit.id))
+        db.commit()
+
     return _calculate_outfit_price(outfit)
 
 @router.put("/{outfit_id}", response_model=OutfitOut)
@@ -243,3 +279,105 @@ def _price_in_range(price: Optional[float], min_price: Optional[float], max_pric
     if max_price is not None and price > max_price:
         return False
     return True
+
+# ---------- Trending Outfits ----------
+
+@router.get("/trending", response_model=List[OutfitOut])
+def trending_outfits(limit: int = 20, db: Session = Depends(get_db)):
+    sub = (
+        db.query(user_favorite_outfits.c.outfit_id, func.count(user_favorite_outfits.c.user_id).label("likes"))
+        .group_by(user_favorite_outfits.c.outfit_id)
+        .subquery()
+    )
+    query = (
+        db.query(Outfit)
+        .join(sub, Outfit.id == sub.c.outfit_id)
+        .order_by(desc(sub.c.likes))
+        .limit(limit)
+    )
+    outfits = query.all()
+    return [_calculate_outfit_price(o) for o in outfits]
+
+# ---------- Favorites Management ----------
+
+@router.post("/{outfit_id}/favorite", status_code=status.HTTP_200_OK)
+def toggle_favorite_outfit(outfit_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    outfit = db.get(Outfit, outfit_id)
+    if not outfit:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Outfit not found")
+    if outfit in user.favorite_outfits:
+        user.favorite_outfits.remove(outfit)
+        db.commit()
+        return {"favorited": False}
+    else:
+        user.favorite_outfits.append(outfit)
+        db.commit()
+        return {"favorited": True}
+
+# ---------- Comments ----------
+
+class OutfitCommentCreate(BaseModel):
+    content: str
+    rating: Optional[int] = None
+
+class OutfitCommentOut(OutfitCommentCreate):
+    id: int
+    user_id: int
+    created_at: Optional[datetime]
+    likes: Optional[int] = 0
+
+    class Config:
+        orm_mode = True
+
+@router.post("/{outfit_id}/comments", response_model=OutfitCommentOut, status_code=status.HTTP_201_CREATED)
+def add_outfit_comment(outfit_id: int, payload: OutfitCommentCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    outfit = db.get(Outfit, outfit_id)
+    if not outfit:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Outfit not found")
+    comment = Comment(user_id=user.id, outfit_id=outfit_id, content=payload.content, rating=payload.rating)
+    db.add(comment)
+    db.commit()
+    db.refresh(comment)
+    return _comment_with_likes(comment)
+
+@router.get("/{outfit_id}/comments", response_model=List[OutfitCommentOut])
+def list_outfit_comments(outfit_id: int, db: Session = Depends(get_db)):
+    comments = db.query(Comment).filter(Comment.outfit_id == outfit_id).order_by(Comment.created_at.desc()).all()
+    return [_comment_with_likes(c) for c in comments]
+
+@router.post("/{outfit_id}/comments/{comment_id}/like", status_code=status.HTTP_200_OK)
+def like_outfit_comment(outfit_id: int, comment_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    comment = db.query(Comment).filter(Comment.id == comment_id, Comment.outfit_id == outfit_id).first()
+    if not comment:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found")
+    if comment in user.liked_comments:
+        user.liked_comments.remove(comment)
+        db.commit()
+        return {"liked": False}
+    else:
+        user.liked_comments.append(comment)
+        db.commit()
+        return {"liked": True}
+
+@router.delete("/{outfit_id}/comments/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_outfit_comment(
+    outfit_id: int,
+    comment_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    comment = db.query(Comment).filter(Comment.id == comment_id, Comment.outfit_id == outfit_id).first()
+    if not comment:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found")
+
+    if comment.user_id != user.id and not is_admin(user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions")
+
+    db.delete(comment)
+    db.commit()
+    return None
+
+def _comment_with_likes(comment: Comment):
+    data = OutfitCommentOut.from_orm(comment)
+    data.likes = comment.liked_by.count() if hasattr(comment.liked_by, 'count') else 0
+    return data

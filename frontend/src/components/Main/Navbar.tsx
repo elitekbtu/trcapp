@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom'
-import { ShoppingBag, User, LogOut, Settings, Heart } from 'lucide-react'
+import { ShoppingBag, User, LogOut, Settings, Heart, ShoppingCart, Clock } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { useCart } from '../../context/CartContext'
+import { useFavorites } from '../../context/FavoritesContext'
 import { Button } from '../ui/button'
 import {
   DropdownMenu,
@@ -13,6 +15,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar'
 
 const MainNavbar = () => {
   const { user, isAdmin } = useAuth()
+  const { totalItems } = useCart()
+  const { favoriteIds } = useFavorites()
   
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md">
@@ -40,9 +44,22 @@ const MainNavbar = () => {
         </nav>
 
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon">
-            <Heart className="h-5 w-5" />
-          </Button>
+          <Link to="/favorites">
+            <Button variant="ghost" size="icon" className="relative">
+              <Heart className={`h-5 w-5 ${favoriteIds.length > 0 ? 'fill-primary text-primary' : ''}`} />
+            </Button>
+          </Link>
+          
+          <Link to="/cart">
+            <Button variant="ghost" size="icon" className="relative">
+              <ShoppingCart className="h-5 w-5" />
+              {totalItems > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
+                  {totalItems}
+                </span>
+              )}
+            </Button>
+          </Link>
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -77,6 +94,12 @@ const MainNavbar = () => {
                 <Link to="/settings" className="flex items-center gap-2">
                   <Settings className="h-4 w-4" />
                   Настройки
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/history" className="flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  История
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />

@@ -7,7 +7,7 @@ from datetime import datetime
 
 from app.core.database import get_db
 from app.db.models.item import Item
-from app.core.security import require_admin, get_current_user_optional
+from app.core.security import require_admin, get_current_user_optional, get_current_user
 from app.db.models.user import User
 
 router = APIRouter(
@@ -147,6 +147,36 @@ def trending_items(limit: int = 20, db: Session = Depends(get_db)):
 def items_by_collection(name: str, db: Session = Depends(get_db)):
     return db.query(Item).filter(Item.collection == name).all()
 
+# ---------- Favorites & History (static routes placed BEFORE /{item_id} to avoid conflicts) ----------
+
+@router.get("/favorites", response_model=List[ItemOut])
+def list_favorite_items(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    # user.favorites is a dynamic relationship
+    return user.favorites.all()
+
+@router.get("/history", response_model=List[ItemOut])
+def viewed_items(limit: int = 50, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    from app.db.models.associations import UserView
+    views = (
+        db.query(UserView)
+        .filter(UserView.user_id == user.id)
+        .order_by(UserView.viewed_at.desc())
+        .limit(limit)
+        .all()
+    )
+    item_ids = [v.item_id for v in views]
+    if not item_ids:
+        return []
+    return db.query(Item).filter(Item.id.in_(item_ids)).all()
+
+# Очистка истории
+
+@router.delete("/history", status_code=status.HTTP_204_NO_CONTENT)
+def clear_view_history(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    from app.db.models.associations import UserView
+    db.query(UserView).filter(UserView.user_id == user.id).delete()
+    db.commit()
+    return None
 
 # ---------- Retrieve single item (kept below static routes to avoid conflicts) ----------
 
@@ -203,3 +233,100 @@ def similar_items(item_id: int, limit: int = 10, db: Session = Depends(get_db)):
     if base_item.color:
         query = query.filter(Item.color == base_item.color)
     return query.limit(limit).all()
+
+# ---------- Favorites Management ----------
+
+from app.db.models.associations import user_favorite_items
+
+
+@router.post("/{item_id}/favorite", status_code=status.HTTP_200_OK)
+def toggle_favorite_item(item_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    item = db.get(Item, item_id)
+    if not item:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
+
+    if item in user.favorites:
+        user.favorites.remove(item)
+        db.commit()
+        return {"favorited": False}
+    else:
+        user.favorites.append(item)
+        db.commit()
+        return {"favorited": True}
+
+# ---------- Comments ----------
+
+from app.db.models.comment import Comment
+
+
+class CommentCreate(BaseModel):
+    content: str
+    rating: Optional[int] = None  # 1-5
+
+class CommentOut(CommentCreate):
+    id: int
+    user_id: int
+    created_at: Optional[datetime]
+    likes: Optional[int] = 0
+
+    class Config:
+        orm_mode = True
+
+
+@router.post("/{item_id}/comments", response_model=CommentOut, status_code=status.HTTP_201_CREATED)
+def add_item_comment(item_id: int, payload: CommentCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    item = db.get(Item, item_id)
+    if not item:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
+    comment = Comment(user_id=user.id, item_id=item_id, content=payload.content, rating=payload.rating)
+    db.add(comment)
+    db.commit()
+    db.refresh(comment)
+    return _comment_with_likes(comment)
+
+
+@router.get("/{item_id}/comments", response_model=List[CommentOut])
+def list_item_comments(item_id: int, db: Session = Depends(get_db)):
+    comments = db.query(Comment).filter(Comment.item_id == item_id).order_by(Comment.created_at.desc()).all()
+    return [_comment_with_likes(c) for c in comments]
+
+
+@router.post("/{item_id}/comments/{comment_id}/like", status_code=status.HTTP_200_OK)
+def like_comment(item_id: int, comment_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    comment = db.query(Comment).filter(Comment.id == comment_id, Comment.item_id == item_id).first()
+    if not comment:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found")
+
+    if comment in user.liked_comments:
+        user.liked_comments.remove(comment)
+        db.commit()
+        return {"liked": False}
+    else:
+        user.liked_comments.append(comment)
+        db.commit()
+        return {"liked": True}
+
+
+@router.delete("/{item_id}/comments/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_item_comment(
+    item_id: int,
+    comment_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    comment = db.query(Comment).filter(Comment.id == comment_id, Comment.item_id == item_id).first()
+    if not comment:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found")
+
+    if comment.user_id != user.id and not is_admin(user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions")
+
+    db.delete(comment)
+    db.commit()
+    return None
+
+def _comment_with_likes(comment: Comment):
+    # Helper to include likes count in response
+    data = CommentOut.from_orm(comment)
+    data.likes = comment.liked_by.count() if hasattr(comment.liked_by, 'count') else 0
+    return data

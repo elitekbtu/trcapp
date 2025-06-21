@@ -29,3 +29,5 @@ class Item(Base):
         back_populates="favorites",
         lazy="dynamic",
     )
+
+    comments = relationship("Comment", back_populates="item", cascade="all, delete-orphan")

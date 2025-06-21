@@ -38,4 +38,26 @@ class User(Base):
         lazy="dynamic",
     )
 
-    view_history = relationship("UserView", back_populates="user", cascade="all, delete-orphan") 
+    view_history = relationship("UserView", back_populates="user", cascade="all, delete-orphan")
+
+    # Favorite outfits
+    favorite_outfits = relationship(
+        "Outfit",
+        secondary="user_favorite_outfits",
+        back_populates="liked_by",
+        lazy="dynamic",
+    )
+
+    # View history
+    outfit_view_history = relationship("OutfitView", back_populates="user", cascade="all, delete-orphan")
+
+    # Comments authored by the user
+    comments = relationship("Comment", back_populates="user", cascade="all, delete-orphan")
+
+    # Comments liked by the user
+    liked_comments = relationship(
+        "Comment",
+        secondary="comment_likes",
+        back_populates="liked_by",
+        lazy="dynamic",
+    ) 

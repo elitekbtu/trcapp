@@ -67,4 +67,69 @@ export const updateOutfit = async (id: number, data: OutfitUpdate) => {
 
 export const deleteOutfit = async (id: number) => {
   await api.delete(`/api/outfits/${id}`)
+}
+
+// ---------- Trending ----------
+
+export const trendingOutfits = async (limit?: number) => {
+  const resp = await api.get<OutfitOut[]>('/api/outfits/trending', { params: { limit } })
+  return resp.data
+}
+
+// ---------- Favorites ----------
+
+export const toggleFavoriteOutfit = async (id: number) => {
+  const resp = await api.post<{ favorited: boolean }>(`/api/outfits/${id}/favorite`, {})
+  return resp.data
+}
+
+export const listFavoriteOutfits = async () => {
+  const resp = await api.get<OutfitOut[]>('/api/outfits/favorites')
+  return resp.data
+}
+
+// ---------- View History ----------
+
+export const viewHistoryOutfits = async (limit = 50) => {
+  const resp = await api.get<OutfitOut[]>('/api/outfits/history', { params: { limit } })
+  return resp.data
+}
+
+export const clearHistoryOutfits = async () => {
+  await api.delete('/api/outfits/history')
+}
+
+// ---------- Comments ----------
+
+export interface OutfitCommentCreate {
+  content: string
+  rating?: number
+}
+
+export interface OutfitCommentOut extends OutfitCommentCreate {
+  id: number
+  user_id: number
+  created_at: string
+  likes: number
+}
+
+export const listOutfitComments = async (outfitId: number) => {
+  const resp = await api.get<OutfitCommentOut[]>(`/api/outfits/${outfitId}/comments`)
+  return resp.data
+}
+
+export const addOutfitComment = async (outfitId: number, data: OutfitCommentCreate) => {
+  const resp = await api.post<OutfitCommentOut>(`/api/outfits/${outfitId}/comments`, data)
+  return resp.data
+}
+
+export const likeOutfitComment = async (outfitId: number, commentId: number) => {
+  const resp = await api.post<{ liked: boolean }>(`/api/outfits/${outfitId}/comments/${commentId}/like`, {})
+  return resp.data
+}
+
+// ---------- Delete Comment ----------
+
+export const deleteOutfitComment = async (outfitId: number, commentId: number) => {
+  await api.delete(`/api/outfits/${outfitId}/comments/${commentId}`)
 } 

@@ -3,6 +3,7 @@ from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 from .item import Item
+from app.db.models.associations import user_favorite_outfits
 
 # Association tables
 outfit_top_association = Table(
@@ -51,6 +52,16 @@ class Outfit(Base):
     footwear = relationship("Item", secondary=outfit_footwear_association)
     accessories = relationship("Item", secondary=outfit_accessories_association)
     fragrances = relationship("Item", secondary=outfit_fragrances_association)
+
+    # Many-to-many favorites
+    liked_by = relationship(
+        "User",
+        secondary=user_favorite_outfits,
+        back_populates="favorite_outfits",
+        lazy="dynamic",
+    )
+
+    comments = relationship("Comment", back_populates="outfit", cascade="all, delete-orphan")
 
     @property
     def total_price(self):

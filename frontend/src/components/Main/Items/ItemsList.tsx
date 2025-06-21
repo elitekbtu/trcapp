@@ -7,6 +7,7 @@ import { Input } from '../../ui/input'
 import { Button } from '../../ui/button'
 import { Badge } from '../../ui/badge'
 import { Search, Filter, Heart, ShoppingBag } from 'lucide-react'
+import { useFavorites } from '../../../context/FavoritesContext'
 
 interface Item {
   id: number
@@ -21,6 +22,7 @@ const ItemsList = () => {
   const [items, setItems] = useState<Item[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const { isFavorite, toggleFavorite } = useFavorites()
 
   const fetchItems = async (q?: string) => {
     try {
@@ -144,8 +146,18 @@ const ItemsList = () => {
                       </div>
                     )}
                     <div className="absolute top-3 right-3 opacity-0 transition-opacity group-hover:opacity-100">
-                      <Button size="icon" variant="secondary" className="h-8 w-8 rounded-full">
-                        <Heart className="h-4 w-4" />
+                      <Button
+                        size="icon"
+                        variant="secondary"
+                        className="h-8 w-8 rounded-full"
+                        onClick={async (e) => {
+                          e.preventDefault()
+                          await toggleFavorite(item.id)
+                        }}
+                      >
+                        <Heart
+                          className={`h-4 w-4 ${isFavorite(item.id) ? 'fill-primary text-primary' : ''}`}
+                        />
                       </Button>
                     </div>
                   </div>
