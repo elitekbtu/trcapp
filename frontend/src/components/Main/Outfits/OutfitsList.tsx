@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../../../api/client'
+import { Button } from '../../ui/button'
 
 interface Outfit {
   id: number
@@ -31,7 +32,12 @@ const OutfitsList = () => {
 
   return (
     <div className="container mx-auto px-4">
-      <h1 className="mb-6 text-2xl font-semibold">Образы</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Образы</h1>
+        <Link to="/outfits/new">
+          <Button className="bg-primary hover:bg-primary/90">Создать образ</Button>
+        </Link>
+      </div>
       <div className="grid gap-4 md:grid-cols-3">
         {outfits.map((o) => (
           <Link key={o.id} to={`/outfits/${o.id}`} className="block rounded-md border p-4 hover:shadow">

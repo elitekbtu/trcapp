@@ -30,6 +30,8 @@ import ItemForm from './components/Admin/ItemForm'
 import OutfitForm from './components/Admin/OutfitForm'
 import Cart from './components/Main/Cart'
 import History from './components/Main/History'
+import OutfitBuilder from './components/Main/Outfits/OutfitBuilder'
+import CreateOutfit from './components/Main/Outfits/CreateOutfit'
 
 function App() {
   return (
@@ -53,6 +55,8 @@ function App() {
               <Route path="/items" element={<ItemsList />} />
               <Route path="/items/:id" element={<ItemDetail />} />
               <Route path="/outfits" element={<OutfitsList />} />
+              <Route path="/outfits/new" element={<CreateOutfit />} />
+              <Route path="/outfits/builder" element={<OutfitBuilder />} />
               <Route path="/outfits/:id" element={<OutfitDetail />} />
               <Route path="/favorites" element={<Favorites />} />
               <Route path="/history" element={<History />} />
