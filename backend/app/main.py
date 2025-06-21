@@ -8,6 +8,7 @@ from app.api.users import router as users_router
 from app.api.auth import router as auth_router
 from app.api.profile import router as profile_router, ProfileOut
 from app.api.user_content import router as user_content_router
+from app.api.cart import router as cart_router
 from app.core.config import get_settings
 from app.core.database import Base, engine
 from app.core.security import get_current_user, get_password_hash
@@ -33,6 +34,7 @@ app.include_router(users_router)
 app.include_router(auth_router)
 app.include_router(profile_router)
 app.include_router(user_content_router)
+app.include_router(cart_router)
 
 # Create default admin user (first email from ADMIN_EMAILS, password from env ADMIN_DEFAULT_PASSWORD)
 @app.on_event("startup")

@@ -250,13 +250,16 @@ const ItemDetail = () => {
             }}>
               Добавить в корзину
             </Button>
-            <Button
+           <Button
               size="lg"
               variant={isFavorite(Number(id)) ? "default" : "outline"}
               className="px-3"
               onClick={handleToggleFavorite}
-            >
-              <Heart className={`h-5 w-5 ${isFavorite(Number(id)) ? 'fill-primary text-primary' : ''}`} />
+                >
+              <Heart 
+                className={`h-5 w-5 ${isFavorite(Number(id)) ? 'fill-current' : ''}`}
+                strokeWidth={isFavorite(Number(id)) ? 2 : 1.5}
+              />
             </Button>
           </div>
         </motion.div>

@@ -60,4 +60,7 @@ class User(Base):
         secondary="comment_likes",
         back_populates="liked_by",
         lazy="dynamic",
-    ) 
+    )
+
+    # Cart items
+    cart_items = relationship("CartItem", back_populates="user", cascade="all, delete-orphan", lazy="dynamic") 
