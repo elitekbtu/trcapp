@@ -8,12 +8,14 @@ import { Button } from '../../ui/button'
 import { Badge } from '../../ui/badge'
 import { Search, Filter, Heart, ShoppingBag } from 'lucide-react'
 import { useFavorites } from '../../../context/FavoritesContext'
+import ImageCarousel from '../../common/ImageCarousel'
 
 interface Item {
   id: number
   name: string
   price?: number | null
   image_url?: string | null
+  image_urls?: string[] | null
   brand?: string | null
   category?: string | null
 }
@@ -134,7 +136,9 @@ const ItemsList = () => {
               <Card className="group overflow-hidden transition-all hover:shadow-lg">
                 <Link to={`/items/${item.id}`}>
                   <div className="relative aspect-[3/4] overflow-hidden">
-                    {item.image_url ? (
+                    {item.image_urls && item.image_urls.length > 0 ? (
+                      <ImageCarousel images={item.image_urls} className="transition-transform duration-500 group-hover:scale-105" />
+                    ) : item.image_url ? (
                       <img
                         src={item.image_url}
                         alt={item.name}

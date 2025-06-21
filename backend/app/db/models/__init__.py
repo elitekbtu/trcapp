@@ -1,1 +1,1 @@
-from . import item, outfit, user, associations, comment 
+from . import item, item_image, outfit, user, associations, comment 

@@ -1,9 +1,14 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form
+from uuid import uuid4
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
 from datetime import datetime
+import os
+from fastapi.encoders import jsonable_encoder
+from app.core.redis_client import get_redis
+import json
 
 from app.core.database import get_db
 from app.db.models.item import Item
@@ -16,6 +21,7 @@ router = APIRouter(
 )
 
 class ItemCreate(BaseModel):
+    # We keep this for OpenAPI docs when using JSON body, but creation endpoint now uses form fields
     name: str
     brand: Optional[str] = None
     color: Optional[str] = None
@@ -47,16 +53,83 @@ class ItemOut(ItemCreate):
     updated_at: Optional[datetime] = None
     style: Optional[str] = None
     collection: Optional[str] = None
+    image_urls: Optional[List[str]] = None
 
     class Config:
         orm_mode = True
 
+UPLOAD_DIR = os.getenv("UPLOAD_DIR", "uploads/items")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+# Helper to save upload file
+def _save_upload_file(upload: UploadFile, subdir: str = "") -> str:
+    """Save uploaded file and return relative path accessible via /uploads."""
+    filename = f"{uuid4().hex}_{upload.filename}"
+    dir_path = os.path.join(UPLOAD_DIR, subdir) if subdir else UPLOAD_DIR
+    os.makedirs(dir_path, exist_ok=True)
+    file_path = os.path.join(dir_path, filename)
+    with open(file_path, "wb") as f:
+        f.write(upload.file.read())
+    # Path to serve: /uploads/items/... (assuming FastAPI mounts /uploads)
+    return f"/uploads/items/{subdir + '/' if subdir else ''}{filename}"
+
 @router.post("/", response_model=ItemOut, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_admin)])
-def create_item(item_in: ItemCreate, db: Session = Depends(get_db)):
-    db_item = Item(**item_in.dict())
+async def create_item(
+    name: str = Form(...),
+    brand: Optional[str] = Form(None),
+    color: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
+    price: Optional[float] = Form(None),
+    category: Optional[str] = Form(None),
+    article: Optional[str] = Form(None),
+    size: Optional[str] = Form(None),
+    style: Optional[str] = Form(None),
+    collection: Optional[str] = Form(None),
+    images: Optional[List[UploadFile]] = File(None),
+    image_url: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+):
+    # Determine primary image_url as first uploaded file (if any)
+    primary_image_url: Optional[str] = None
+    image_urls: List[str] = []
+
+    if images:
+        for idx, upload in enumerate(images):
+            url = _save_upload_file(upload)
+            image_urls.append(url)
+            if idx == 0:
+                primary_image_url = url
+
+    # If no uploaded images but direct URL provided
+    if not primary_image_url and image_url:
+        primary_image_url = image_url
+
+    db_item = Item(
+        name=name,
+        brand=brand,
+        color=color,
+        image_url=primary_image_url,
+        description=description,
+        price=price,
+        category=category,
+        article=article,
+        size=size,
+        style=style,
+        collection=collection,
+    )
+
     db.add(db_item)
     db.commit()
     db.refresh(db_item)
+
+    # Save image relations
+    from app.db.models.item_image import ItemImage
+
+    for position, url in enumerate(image_urls):
+        db.add(ItemImage(item_id=db_item.id, image_url=url, position=position))
+    db.commit()
+    db.refresh(db_item)
+
     return db_item
 
 @router.get("/", response_model=List[ItemOut])
@@ -182,6 +255,13 @@ def clear_view_history(db: Session = Depends(get_db), user: User = Depends(get_c
 
 @router.get("/{item_id}", response_model=ItemOut)
 def get_item(item_id: int, db: Session = Depends(get_db), current: Optional["User"] = Depends(get_current_user_optional)):
+    redis_client = get_redis()
+    cache_key = f"item:{item_id}"
+    cached = redis_client.get(cache_key)
+    if cached:
+        # Redis stores strings, we need to load JSON to dict then parse via ItemOut
+        return json.loads(cached)
+
     item = db.get(Item, item_id)
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
@@ -191,7 +271,12 @@ def get_item(item_id: int, db: Session = Depends(get_db), current: Optional["Use
         from app.db.models.associations import UserView
         db.add(UserView(user_id=current.id, item_id=item.id))
         db.commit()
-    return item
+
+    # Cache encoded item (convert to json first)
+    encoded = jsonable_encoder(ItemOut.from_orm(item))
+    redis_client.setex(cache_key, 300, json.dumps(encoded))  # Cache for 5 minutes
+
+    return encoded
 
 @router.put("/{item_id}", response_model=ItemOut, dependencies=[Depends(require_admin)])
 def update_item(item_id: int, item_in: ItemUpdate, db: Session = Depends(get_db)):

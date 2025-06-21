@@ -16,3 +16,4 @@ authlib>=1.2.1
 python-multipart
 bcrypt==4.0.1
 pydantic[email]
+aiofiles>=23.0.0

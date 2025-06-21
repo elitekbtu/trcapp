@@ -39,6 +39,7 @@ const ItemForm = () => {
   const [form, setForm] = useState<ItemCreate>(emptyItem)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [files, setFiles] = useState<File[]>([])
 
   useEffect(() => {
     const fetchItem = async () => {
@@ -71,6 +72,12 @@ const ItemForm = () => {
     setForm((prev) => ({ ...prev, [name]: value === '' ? undefined : Number(value) }))
   }
 
+  const handleFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return
+    const selected = Array.from(e.target.files)
+    setFiles(selected)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
@@ -84,7 +91,16 @@ const ItemForm = () => {
           description: 'Товар успешно обновлен',
         })
       } else {
-        await createItem(form)
+        const formData = new FormData()
+        Object.entries(form).forEach(([key, value]) => {
+          if (value !== undefined && value !== '') {
+            formData.append(key, String(value))
+          }
+        })
+        files.forEach((file) => {
+          formData.append('images', file)
+        })
+        await createItem(formData)
         toast({
           title: 'Успешно',
           description: 'Товар успешно создан',
@@ -247,6 +263,38 @@ const ItemForm = () => {
               />
             </div>
 
+            {/* File Upload */}
+            <div className="space-y-3">
+              <Label htmlFor="image_files" className="text-sm font-medium text-muted-foreground">
+                Загрузить изображения
+              </Label>
+              <Input
+                id="image_files"
+                name="image_files"
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleFilesChange}
+                className="focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+            </div>
+
+            {/* Previews for selected files */}
+            {files.length > 0 && (
+              <div className="grid grid-cols-3 gap-4">
+                {files.map((file, idx) => (
+                  <div key={idx} className="relative h-32 w-full overflow-hidden rounded-lg border">
+                    <img
+                      src={URL.createObjectURL(file)}
+                      alt={`preview-${idx}`}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Preview for image URL */}
             {form.image_url && (
               <div className="flex justify-center">
                 <div className="relative h-48 w-48 overflow-hidden rounded-lg border-2 border-dashed border-muted-foreground/20">

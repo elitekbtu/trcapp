@@ -31,3 +31,9 @@ class Item(Base):
     )
 
     comments = relationship("Comment", back_populates="item", cascade="all, delete-orphan")
+    images = relationship("ItemImage", back_populates="item", cascade="all, delete-orphan")
+
+    @property
+    def image_urls(self):
+        """Helper to return list of image URLs for this item."""
+        return [img.image_url for img in self.images] if self.images else []

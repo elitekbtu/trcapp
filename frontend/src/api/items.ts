@@ -21,6 +21,7 @@ export interface ItemOut extends ItemBase {
   id: number
   created_at?: string
   updated_at?: string
+  image_urls?: string[]
 }
 
 export interface ListItemsParams {
@@ -46,8 +47,12 @@ export const getItem = async (id: number) => {
   return resp.data
 }
 
-export const createItem = async (data: ItemCreate) => {
-  const resp = await api.post<ItemOut>('/api/items/', data)
+export const createItem = async (data: FormData) => {
+  const resp = await api.post<ItemOut>('/api/items/', data, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  })
   return resp.data
 }
 

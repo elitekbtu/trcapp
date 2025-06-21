@@ -14,6 +14,7 @@ import { Skeleton } from '../../ui/skeleton'
 import { Textarea } from '../../ui/textarea'
 import { useCart } from '../../../context/CartContext'
 import { useFavorites } from '../../../context/FavoritesContext'
+import ImageCarousel from '../../common/ImageCarousel'
 
 interface Item {
   id: number
@@ -22,6 +23,7 @@ interface Item {
   description?: string | null
   price?: number | null
   image_url?: string | null
+  image_urls?: string[] | null
   color?: string | null
   category?: string | null
   size?: string | null
@@ -169,7 +171,9 @@ const ItemDetail = () => {
           transition={{ duration: 0.6 }}
           className="w-full md:w-1/2"
         >
-          {item.image_url ? (
+          {item.image_urls && item.image_urls.length > 0 ? (
+            <ImageCarousel images={item.image_urls} className="rounded-xl" aspectClassName="aspect-square" />
+          ) : item.image_url ? (
             <div className="aspect-square overflow-hidden rounded-xl bg-muted">
               <img
                 src={item.image_url}

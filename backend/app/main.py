@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import Depends
+from fastapi.staticfiles import StaticFiles
 
 from app.api.items import router as items_router
 from app.api.outfits import router as outfits_router
@@ -35,6 +36,9 @@ app.include_router(auth_router)
 app.include_router(profile_router)
 app.include_router(user_content_router)
 app.include_router(cart_router)
+
+# Serve uploaded media files
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # Create default admin user (first email from ADMIN_EMAILS, password from env ADMIN_DEFAULT_PASSWORD)
 @app.on_event("startup")
