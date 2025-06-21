@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.db.models.user import User
+from app.db.models.outfit import Outfit
 
 router = APIRouter(prefix="/api/profile", tags=["Profile"], dependencies=[Depends(get_current_user)])
 
@@ -32,6 +33,22 @@ class ProfileOut(BaseModel):
 
     class Config:
         orm_mode = True
+
+    # Accept values coming from DB as comma-separated strings and convert to lists
+    @validator("favorite_colors", "favorite_brands", pre=True)
+    def _split_csv(cls, v):
+        if v is None:
+            return None
+        # Already list
+        if isinstance(v, list):
+            return v
+        # Empty string => None / empty list
+        if isinstance(v, str):
+            v = v.strip()
+            if not v:
+                return []
+            return v.split(",")
+        return v
 
 
 class ProfileUpdate(BaseModel):
@@ -95,4 +112,14 @@ def update_profile(
         user.favorite_colors = user.favorite_colors.split(",")
     if user.favorite_brands:
         user.favorite_brands = user.favorite_brands.split(",")
-    return user 
+    return user
+
+
+@router.delete("/", status_code=status.HTTP_204_NO_CONTENT)
+def delete_profile(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    """Delete the current user's account along with their outfits and related data."""
+    # Remove related outfits (or any other cascading entities) first to keep DB integrity
+    db.query(Outfit).filter(Outfit.owner_id == str(user.id)).delete()
+    db.delete(user)
+    db.commit()
+    return None 

@@ -10,6 +10,7 @@ import GoogleCallback from './components/Guest/GoogleCallback'
 // Main pages
 import Home from './components/Main/Home'
 import Profile from './components/Main/Profile'
+import Settings from './components/Main/Settings'
 import Logout from './components/Main/Logout'
 import RequireAuth from './components/common/RequireAuth'
 import RequireAdmin from './components/common/RequireAdmin'
@@ -40,6 +41,7 @@ function App() {
         <Route element={<RequireAuth><MainLayout /></RequireAuth>}>
           <Route path="/home" element={<Home />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="/logout" element={<Logout />} />
           <Route path="/items" element={<ItemsList />} />
           <Route path="/items/:id" element={<ItemDetail />} />

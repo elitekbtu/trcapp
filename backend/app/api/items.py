@@ -119,6 +119,37 @@ def list_items(
     
     return query.offset(skip).limit(limit).all()
 
+# ---------- Trending items ----------
+
+from sqlalchemy import func, desc
+from app.db.models.associations import user_favorite_items
+
+
+@router.get("/trending", response_model=List[ItemOut])
+def trending_items(limit: int = 20, db: Session = Depends(get_db)):
+    sub = (
+        db.query(user_favorite_items.c.item_id, func.count(user_favorite_items.c.user_id).label("likes"))
+        .group_by(user_favorite_items.c.item_id)
+        .subquery()
+    )
+    query = (
+        db.query(Item)
+        .join(sub, Item.id == sub.c.item_id)
+        .order_by(desc(sub.c.likes))
+        .limit(limit)
+    )
+    return query.all()
+
+
+# ---------- Collections ----------
+
+@router.get("/collections", response_model=List[ItemOut])
+def items_by_collection(name: str, db: Session = Depends(get_db)):
+    return db.query(Item).filter(Item.collection == name).all()
+
+
+# ---------- Retrieve single item (kept below static routes to avoid conflicts) ----------
+
 @router.get("/{item_id}", response_model=ItemOut)
 def get_item(item_id: int, db: Session = Depends(get_db), current: Optional["User"] = Depends(get_current_user_optional)):
     item = db.get(Item, item_id)
@@ -156,28 +187,6 @@ def delete_item(item_id: int, db: Session = Depends(get_db)):
     db.commit()
     return None
 
-# ---------- Trending items ----------
-
-from sqlalchemy import func, desc
-from app.db.models.associations import user_favorite_items
-
-
-@router.get("/trending", response_model=List[ItemOut])
-def trending_items(limit: int = 20, db: Session = Depends(get_db)):
-    sub = (
-        db.query(user_favorite_items.c.item_id, func.count(user_favorite_items.c.user_id).label("likes"))
-        .group_by(user_favorite_items.c.item_id)
-        .subquery()
-    )
-    query = (
-        db.query(Item)
-        .join(sub, Item.id == sub.c.item_id)
-        .order_by(desc(sub.c.likes))
-        .limit(limit)
-    )
-    return query.all()
-
-
 # ---------- Similar items ----------
 
 @router.get("/{item_id}/similar", response_model=List[ItemOut])
@@ -194,10 +203,3 @@ def similar_items(item_id: int, limit: int = 10, db: Session = Depends(get_db)):
     if base_item.color:
         query = query.filter(Item.color == base_item.color)
     return query.limit(limit).all()
-
-
-# ---------- Collections ----------
-
-@router.get("/collections", response_model=List[ItemOut])
-def items_by_collection(name: str, db: Session = Depends(get_db)):
-    return db.query(Item).filter(Item.collection == name).all()

@@ -33,4 +33,8 @@ export const updateProfile = async (data: ProfileUpdate) => {
 export const getMe = async () => {
   const resp = await api.get<ProfileOut>('/api/me')
   return resp.data
+}
+
+export const deleteProfile = async () => {
+  await api.delete('/api/profile/')
 } 
