@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
-import { listItems, type ItemOut } from '../../../api/items'
+import { listItems } from '../../../api/items'
+import { type ItemOut } from '../../../api/schemas'
 import { Button } from '../../ui/button'
 import { useTranslation } from 'react-i18next'
 

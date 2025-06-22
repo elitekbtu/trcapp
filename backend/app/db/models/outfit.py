@@ -21,11 +21,12 @@ class Outfit(Base):
     name = Column(String(100), nullable=False, index=True)
     style = Column(String(50), nullable=False, index=True)
     description = Column(Text, nullable=True)
-    owner_id = Column(String(50), nullable=False, index=True) 
+    owner_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     collection = Column(String(100), nullable=True, index=True)
     
+    owner = relationship("User", back_populates="outfits")
     outfit_items = relationship("OutfitItem", cascade="all, delete-orphan")
 
     liked_by = relationship(

@@ -6,7 +6,7 @@ import { Button } from '../../ui/button'
 import { Input } from '../../ui/input'
 import { Card, CardContent } from '../../ui/card'
 import { Search, Filter, Sparkles } from 'lucide-react'
-import type { OutfitOut } from '../../../api/outfits'
+import { type OutfitOut } from '../../../api/schemas'
 
 interface OutfitPreview {
   id: number
@@ -24,7 +24,7 @@ const OutfitsList = () => {
   const fetchOutfits = async (q?: string) => {
     setLoading(true)
     try {
-      const resp = await api.get<OutfitOut[]>('/api/outfits', { params: { q } })
+      const resp = await api.get<OutfitOut[]>('/api/outfits/', { params: { q } })
       // Map basic fields first
       const basic: OutfitPreview[] = resp.data.map((o) => ({
         id: o.id,

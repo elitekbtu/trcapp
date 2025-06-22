@@ -31,8 +31,11 @@ class ProfileOut(BaseModel):
     def _split_csv(cls, v):
         if v is None:
             return None
-        # Already list
+        # Already list of strings or ORM objects
         if isinstance(v, list):
+            # Convert list of ORM objects (Color/Brand) to their names
+            if v and hasattr(v[0], "name"):
+                return [getattr(obj, "name", str(obj)) for obj in v]
             return v
         # Empty string => None / empty list
         if isinstance(v, str):
@@ -68,4 +71,18 @@ class ProfileUpdate(BaseModel):
         from datetime import date as _date
         if v is not None and v > _date.today():
             raise ValueError("Date of birth cannot be in the future")
+        return v
+
+    # Accept raw comma-separated strings as well
+    @validator("favorite_colors", "favorite_brands", pre=True)
+    def _split_csv_update(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            v = v.strip()
+            if not v:
+                return []
+            return [s.strip() for s in v.split(",") if s.strip()]
         return v 

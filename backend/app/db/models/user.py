@@ -38,6 +38,8 @@ class User(Base):
 
     view_history = relationship("UserView", back_populates="user", cascade="all, delete-orphan")
 
+    outfits = relationship("Outfit", cascade="all, delete-orphan", back_populates="owner")
+
     favorite_outfits = relationship(
         "Outfit",
         secondary="user_favorite_outfits",

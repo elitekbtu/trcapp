@@ -4,20 +4,21 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_, func, desc
 from datetime import datetime, timedelta
 
-from app.db.models.outfit import Outfit
+from app.db.models.outfit import Outfit, OutfitItem
 from app.db.models.item import Item
 from app.core.security import is_admin
 from app.db.models.user import User
 from app.db.models.associations import user_favorite_outfits, OutfitView
 from app.db.models.comment import Comment
-from .schemas import OutfitCreate, OutfitUpdate, OutfitOut, OutfitCommentCreate, OutfitCommentOut
+from .schemas import OutfitCreate, OutfitUpdate, OutfitOut, OutfitCommentCreate, OutfitCommentOut, OutfitItemBase
 
 CATEGORY_MAP = {
-    "top_ids": ("Tops", "tops"),
-    "bottom_ids": ("Bottoms", "bottoms"),
+    # payload_field: (expected_item_category_in_db, item_category_for_outfit_item)
+    "top_ids": ("Tops", "top"),
+    "bottom_ids": ("Bottoms", "bottom"),
     "footwear_ids": ("Footwear", "footwear"),
-    "accessories_ids": ("Accessories", "accessories"),
-    "fragrances_ids": ("Fragrances", "fragrances"),
+    "accessories_ids": ("Accessories", "accessory"),
+    "fragrances_ids": ("Fragrances", "fragrance"),
 }
 
 
@@ -42,15 +43,28 @@ def _check_owner_or_admin(outfit: Outfit, user: Optional[User]):
 
 
 def _calculate_outfit_price(outfit: Outfit) -> OutfitOut:
-    outfit_data = OutfitOut.from_orm(outfit).dict()
-    total_price = sum(
-        item.price
-        for cat in ["tops", "bottoms", "footwear", "accessories", "fragrances"]
-        for item in getattr(outfit, cat)
-        if item.price is not None
+    """Manually construct the OutfitOut response model."""
+    categorized_items = outfit.items  # This is the @property that returns a dict of items by category
+
+    all_items = [item for sublist in categorized_items.values() for item in sublist]
+    total_price = sum(item.price for item in all_items if item.price is not None)
+
+    return OutfitOut(
+        id=outfit.id,
+        name=outfit.name,
+        style=outfit.style,
+        description=outfit.description,
+        collection=outfit.collection,
+        owner_id=outfit.owner_id,
+        created_at=outfit.created_at,
+        updated_at=outfit.updated_at,
+        tops=categorized_items.get("tops", []),
+        bottoms=categorized_items.get("bottoms", []),
+        footwear=categorized_items.get("footwear", []),
+        accessories=categorized_items.get("accessories", []),
+        fragrances=categorized_items.get("fragrances", []),
+        total_price=total_price,
     )
-    outfit_data["total_price"] = total_price
-    return OutfitOut(**outfit_data)
 
 
 def _price_in_range(price: Optional[float], min_price: Optional[float], max_price: Optional[float]) -> bool:
@@ -75,16 +89,23 @@ def create_outfit(db: Session, user: User, outfit_in: OutfitCreate):
         style=outfit_in.style,
         description=outfit_in.description,
         collection=outfit_in.collection,
-        owner_id=str(user.id)
+        owner_id=str(user.id),
     )
 
-    for payload_field, (expected_category, rel_attr) in CATEGORY_MAP.items():
+    all_items_for_collection_check = []
+
+    for payload_field, (expected_category, item_cat) in CATEGORY_MAP.items():
         ids = getattr(outfit_in, payload_field)
+        if not ids:
+            continue
         items = _fetch_items_by_category(db, ids, expected_category)
-        getattr(db_outfit, rel_attr).extend(items)
+        all_items_for_collection_check.extend(items)
+        for item in items:
+            outfit_item = OutfitItem(item_category=item_cat, item=item)
+            db_outfit.outfit_items.append(outfit_item)
 
     if outfit_in.collection:
-        for item in db_outfit.tops + db_outfit.bottoms + db_outfit.footwear + db_outfit.accessories + db_outfit.fragrances:
+        for item in all_items_for_collection_check:
             if item.collection != outfit_in.collection:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -189,28 +210,35 @@ def update_outfit(db: Session, user: User, outfit_id: int, outfit_in: OutfitUpda
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Outfit not found")
     _check_owner_or_admin(outfit, user)
 
-    collection_changed = False
+    update_data = outfit_in.dict(exclude_unset=True)
+
     for field in ["name", "style", "description", "collection"]:
-        val = getattr(outfit_in, field)
-        if val is not None:
-            setattr(outfit, field, val)
-            if field == "collection":
-                collection_changed = True
+        if field in update_data:
+            setattr(outfit, field, update_data[field])
 
-    for payload_field, (expected_category, rel_attr) in CATEGORY_MAP.items():
-        ids = getattr(outfit_in, payload_field)
-        if ids is not None:
-            items = _fetch_items_by_category(db, ids, expected_category)
-            setattr(outfit, rel_attr, items)
+    items_were_updated = False
+    for payload_field, (expected_category, item_cat) in CATEGORY_MAP.items():
+        if payload_field in update_data:
+            items_were_updated = True
+            # This category is being updated. Remove existing items of this category.
+            outfit.outfit_items = [oi for oi in outfit.outfit_items if oi.item_category != item_cat]
 
-    if collection_changed and outfit.collection:
-        for item in outfit.tops + outfit.bottoms + outfit.footwear + outfit.accessories + outfit.fragrances:
+            # Add new items for this category
+            ids = update_data[payload_field]
+            if ids:
+                items = _fetch_items_by_category(db, ids, expected_category)
+                for item in items:
+                    outfit.outfit_items.append(OutfitItem(item_category=item_cat, item=item))
+
+    if (items_were_updated or "collection" in update_data) and outfit.collection:
+        all_items_in_outfit = [oi.item for oi in outfit.outfit_items]
+        for item in all_items_in_outfit:
             if item.collection != outfit.collection:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"Item {item.id} does not belong to collection '{outfit.collection}'",
                 )
-    
+
     db.add(outfit)
     db.commit()
     db.refresh(outfit)

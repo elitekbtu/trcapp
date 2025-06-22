@@ -7,7 +7,7 @@ from app.db.models.user import User
 from . import service
 from .schemas import ProfileOut, ProfileUpdate
 
-router = APIRouter(prefix="/profile", tags=["Profile"], dependencies=[Depends(get_current_user)])
+router = APIRouter(prefix="/profile", tags=["Profile"])
 
 
 @router.get("/", response_model=ProfileOut)

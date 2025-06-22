@@ -110,9 +110,17 @@ def list_items(db: Session, filters: dict, skip: int = 0, limit: int = 100, user
 
     # Dynamically add favorite status if user is logged in
     if user_id:
+        # Alias the user_favorite_items table to avoid ambiguity if it's used elsewhere
+        favorite_items_alias = user_favorite_items.alias("favorite_items")
         query = query.add_columns(
-            func.coalesce(FavoriteItem.item_id.isnot(None), False).label("is_favorite")
-        ).outerjoin(FavoriteItem, and_(FavoriteItem.item_id == Item.id, FavoriteItem.user_id == user_id))
+            func.coalesce(favorite_items_alias.c.item_id.isnot(None), False).label("is_favorite")
+        ).outerjoin(
+            favorite_items_alias,
+            and_(
+                favorite_items_alias.c.item_id == Item.id,
+                favorite_items_alias.c.user_id == user_id,
+            ),
+        )
 
     # Apply filters from the dictionary
     if q := filters.get("q"):
@@ -199,19 +207,9 @@ def delete_item(db: Session, item_id: int):
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
 
-    # Manually delete from association tables
-    from app.db.models.outfit import (
-        outfit_top_association,
-        outfit_bottom_association,
-        outfit_footwear_association,
-        outfit_accessories_association,
-        outfit_fragrances_association,
-    )
-    db.execute(outfit_top_association.delete().where(outfit_top_association.c.item_id == item_id))
-    db.execute(outfit_bottom_association.delete().where(outfit_bottom_association.c.item_id == item_id))
-    db.execute(outfit_footwear_association.delete().where(outfit_footwear_association.c.item_id == item_id))
-    db.execute(outfit_accessories_association.delete().where(outfit_accessories_association.c.item_id == item_id))
-    db.execute(outfit_fragrances_association.delete().where(outfit_fragrances_association.c.item_id == item_id))
+    # The associations to outfits are now handled by the OutfitItem model,
+    # which has a CASCADE delete relationship from the Item.
+    # The old manual deletion code below was for a previous schema and has been removed.
 
     # Remove images
     for img in item.images:

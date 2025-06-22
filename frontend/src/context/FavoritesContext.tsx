@@ -43,19 +43,32 @@ export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, [user?.id])
 
   const toggleFavorite: FavoritesState['toggleFavorite'] = async (id) => {
-    if (!user) return // guests can't favorite
+    if (!user) return; // guests can't favorite
+    
+    // Optimistic update
+    const isCurrentlyFavorite = favoriteIds.includes(id);
+    setFavoriteIds((prev) => {
+      if (isCurrentlyFavorite) {
+        return prev.filter((x) => x !== id);
+      } else {
+        return [...prev, id];
+      }
+    });
+
     try {
-      const resp = await apiToggleFavoriteItem(id)
-      setFavoriteIds((prev) => {
-        if (resp.favorited) {
-          return prev.includes(id) ? prev : [...prev, id]
-        }
-        return prev.filter((x) => x !== id)
-      })
+      await apiToggleFavoriteItem(id);
     } catch (err) {
-      console.error(err)
+      // Revert on error
+      setFavoriteIds((prev) => {
+        if (isCurrentlyFavorite) {
+          return [...prev, id];
+        } else {
+          return prev.filter((x) => x !== id);
+        }
+      });
+      console.error(err);
     }
-  }
+  };
 
   const isFavorite: FavoritesState['isFavorite'] = (id) => favoriteIds.includes(id)
 

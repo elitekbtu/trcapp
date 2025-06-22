@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, status, Query, UploadFile, File, Form
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.security import require_admin, get_current_user_optional, get_current_user, get_current_user_or_guest
+from app.core.security import require_admin, get_current_user_optional, get_current_user
 from app.db.models.user import User
 from . import service
 from .schemas import ItemOut, ItemUpdate, VariantOut, VariantCreate, VariantUpdate, CommentOut, CommentCreate
@@ -46,7 +46,7 @@ def list_items(
     sort_by: Optional[str] = None,
     clothing_type: Optional[str] = None,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user_or_guest),
+    user: Optional[User] = Depends(get_current_user_optional),
 ):
     filters = {
         "q": q,
@@ -59,7 +59,7 @@ def list_items(
         "sort_by": sort_by,
         "clothing_type": clothing_type,
     }
-    return service.list_items(db, filters, skip, limit, user.id)
+    return service.list_items(db, filters, skip, limit, user.id if user else None)
 
 
 @router.get("/trending", response_model=List[ItemOut])

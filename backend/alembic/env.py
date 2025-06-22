@@ -10,7 +10,7 @@ sys.path.append(str(PROJECT_ROOT))
 from app.core.config import get_settings
 from app.core.database import Base
 
-from app.db.models import item, outfit, user, cart
+from app.db import models  # noqa
 
 config = context.config
 fileConfig(config.config_file_name)

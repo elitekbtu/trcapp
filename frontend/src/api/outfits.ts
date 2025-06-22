@@ -1,40 +1,11 @@
 import api from './client'
-
-// Base outfit item type (simplified)
-export interface OutfitItemBase {
-  id: number
-  name: string
-  brand?: string
-  image_url?: string
-  price?: number
-}
-
-export interface OutfitCreate {
-  name: string
-  style: string
-  description?: string
-  collection?: string
-  top_ids?: number[]
-  bottom_ids?: number[]
-  footwear_ids?: number[]
-  accessories_ids?: number[]
-  fragrances_ids?: number[]
-}
-
-export interface OutfitUpdate extends Partial<OutfitCreate> {}
-
-export interface OutfitOut extends OutfitCreate {
-  id: number
-  owner_id: string
-  created_at?: string
-  updated_at?: string
-  tops: OutfitItemBase[]
-  bottoms: OutfitItemBase[]
-  footwear: OutfitItemBase[]
-  accessories: OutfitItemBase[]
-  fragrances: OutfitItemBase[]
-  total_price?: number
-}
+import {
+  type OutfitCommentCreate,
+  type OutfitCommentOut,
+  type OutfitCreate,
+  type OutfitOut,
+  type OutfitUpdate,
+} from './schemas'
 
 export interface ListOutfitsParams {
   skip?: number
@@ -81,7 +52,7 @@ export const trendingOutfits = async (limit?: number) => {
 // ---------- Favorites ----------
 
 export const toggleFavoriteOutfit = async (id: number) => {
-  await api.post(`/api/outfits/${id}/favorite`, {})
+  await api.post(`/api/outfits/${id}/favorite`)
 }
 
 export const listFavoriteOutfits = async () => {
@@ -91,28 +62,16 @@ export const listFavoriteOutfits = async () => {
 
 // ---------- View History ----------
 
-export const viewHistoryOutfits = async (limit = 50) => {
+export const viewedOutfits = async (limit = 50) => {
   const resp = await api.get<OutfitOut[]>('/api/outfits/history', { params: { limit } })
   return resp.data
 }
 
-export const clearHistoryOutfits = async () => {
+export const clearOutfitViewHistory = async () => {
   await api.delete('/api/outfits/history')
 }
 
 // ---------- Comments ----------
-
-export interface OutfitCommentCreate {
-  content: string
-  rating?: number
-}
-
-export interface OutfitCommentOut extends OutfitCommentCreate {
-  id: number
-  user_id: number
-  created_at: string
-  likes: number
-}
 
 export const listOutfitComments = async (outfitId: number) => {
   const resp = await api.get<OutfitCommentOut[]>(`/api/outfits/${outfitId}/comments`)
@@ -125,7 +84,7 @@ export const addOutfitComment = async (outfitId: number, data: OutfitCommentCrea
 }
 
 export const likeOutfitComment = async (outfitId: number, commentId: number) => {
-  await api.post(`/api/outfits/${outfitId}/comments/${commentId}/like`, {})
+  await api.post(`/api/outfits/${outfitId}/comments/${commentId}/like`)
 }
 
 // ---------- Delete Comment ----------

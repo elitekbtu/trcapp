@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Loader2, Save, Trash2 } from 'lucide-react'
-import { getProfile, updateProfile, type ProfileUpdate, deleteProfile } from '../../api/profile'
+import { getProfile, updateProfile, deleteProfile } from '../../api/profile'
+import { type ProfileUpdate } from '../../api/schemas'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
@@ -21,8 +22,8 @@ const emptyProfile: ProfileUpdate = {
   chest: undefined,
   waist: undefined,
   hips: undefined,
-  favorite_colors: [],
-  favorite_brands: [],
+  favorite_colors: '',
+  favorite_brands: '',
 }
 
 const Settings = () => {
@@ -50,8 +51,12 @@ const Settings = () => {
           chest: data.chest,
           waist: data.waist,
           hips: data.hips,
-          favorite_colors: data.favorite_colors || [],
-          favorite_brands: data.favorite_brands || [],
+          favorite_colors: Array.isArray(data.favorite_colors)
+            ? data.favorite_colors.join(', ')
+            : (data.favorite_colors as string) || '',
+          favorite_brands: Array.isArray(data.favorite_brands)
+            ? data.favorite_brands.join(', ')
+            : (data.favorite_brands as string) || '',
         })
       } catch (error) {
         toast({
@@ -69,34 +74,19 @@ const Settings = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
-    setForm((prev) => ({ ...prev, [name as keyof ProfileUpdate]: value }))
+    setForm((prev: ProfileUpdate) => ({ ...prev, [name as keyof ProfileUpdate]: value }))
   }
 
   const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
-    setForm((prev) => ({ ...prev, [name as keyof ProfileUpdate]: value === '' ? undefined : Number(value) }))
-  }
-
-  const handleListChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    const list = value.split(',').map((s) => s.trim())
-    setForm((prev) => ({ ...prev, [name as keyof ProfileUpdate]: list }))
+    setForm((prev: ProfileUpdate) => ({ ...prev, [name as keyof ProfileUpdate]: value === '' ? undefined : Number(value) }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
     try {
-      const sanitizedForm = {
-        ...form,
-        favorite_colors: Array.isArray(form.favorite_colors)
-          ? form.favorite_colors.filter(Boolean)
-          : form.favorite_colors,
-        favorite_brands: Array.isArray(form.favorite_brands)
-          ? form.favorite_brands.filter(Boolean)
-          : form.favorite_brands,
-      }
-      await updateProfile(sanitizedForm)
+      await updateProfile(form)
       toast({
         title: 'Успешно',
         description: 'Профиль обновлен',
@@ -306,8 +296,8 @@ const Settings = () => {
               <Textarea
                 id="favorite_colors"
                 name="favorite_colors"
-                value={Array.isArray(form.favorite_colors) ? form.favorite_colors.join(', ') : ''}
-                onChange={handleListChange}
+                value={Array.isArray(form.favorite_colors) ? form.favorite_colors.join(', ') : (form.favorite_colors || '')}
+                onChange={handleChange}
                 placeholder="Красный, Черный, Белый"
                 className="resize-none focus:border-primary focus:ring-1 focus:ring-primary"
               />
@@ -319,8 +309,8 @@ const Settings = () => {
               <Textarea
                 id="favorite_brands"
                 name="favorite_brands"
-                value={Array.isArray(form.favorite_brands) ? form.favorite_brands.join(', ') : ''}
-                onChange={handleListChange}
+                value={Array.isArray(form.favorite_brands) ? form.favorite_brands.join(', ') : (form.favorite_brands || '')}
+                onChange={handleChange}
                 placeholder="Nike, Adidas, Zara"
                 className="resize-none focus:border-primary focus:ring-1 focus:ring-primary"
               />

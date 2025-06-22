@@ -1,32 +1,14 @@
 import api from './client'
 import type { ClothingType } from '../constants'
-
-// Shared base properties for an Item
-interface ItemBase {
-  name: string
-  brand?: string
-  color?: string
-  clothing_type?: ClothingType
-  image_url?: string
-  description?: string
-  price?: number
-  category?: string
-  article?: string
-  size?: string
-  style?: string
-  collection?: string
-}
-
-export interface ItemCreate extends ItemBase {}
-export interface ItemUpdate extends Partial<ItemBase> {}
-export interface ItemOut extends ItemBase {
-  id: number
-  created_at?: string
-  updated_at?: string
-  image_urls?: string[]
-  clothing_type?: ClothingType
-  variants?: VariantOut[]
-}
+import {
+  type ItemOut,
+  type ItemUpdate,
+  type CommentCreate,
+  type CommentOut,
+  type VariantOut,
+  type VariantCreate,
+  type VariantUpdate,
+} from './schemas'
 
 export interface ListItemsParams {
   skip?: number
@@ -88,7 +70,7 @@ export const itemsByCollection = async (name: string) => {
 // ---------- Favorites ----------
 
 export const toggleFavoriteItem = async (id: number) => {
-  await api.post(`/api/items/${id}/favorite`, {})
+  await api.post(`/api/items/${id}/favorite`)
 }
 
 export const listFavoriteItems = async () => {
@@ -98,28 +80,16 @@ export const listFavoriteItems = async () => {
 
 // ---------- View History ----------
 
-export const viewHistoryItems = async (limit = 50) => {
+export const viewedItems = async (limit = 50) => {
   const resp = await api.get<ItemOut[]>('/api/items/history', { params: { limit } })
   return resp.data
 }
 
-export const clearHistoryItems = async () => {
+export const clearViewHistory = async () => {
   await api.delete('/api/items/history')
 }
 
 // ---------- Comments ----------
-
-export interface CommentCreate {
-  content: string
-  rating?: number
-}
-
-export interface CommentOut extends CommentCreate {
-  id: number
-  user_id: number
-  created_at: string
-  likes: number
-}
 
 export const listItemComments = async (itemId: number) => {
   const resp = await api.get<CommentOut[]>(`/api/items/${itemId}/comments`)
@@ -131,8 +101,8 @@ export const addItemComment = async (itemId: number, data: CommentCreate) => {
   return resp.data
 }
 
-export const likeItemComment = async (itemId: number, commentId: number) => {
-  await api.post(`/api/items/${itemId}/comments/${commentId}/like`, {})
+export const likeComment = async (itemId: number, commentId: number) => {
+  await api.post(`/api/items/${itemId}/comments/${commentId}/like`)
 }
 
 // ---------- Delete Comment ----------
@@ -160,18 +130,4 @@ export const updateVariant = async (itemId: number, variantId: number, data: Var
 
 export const deleteVariant = async (itemId: number, variantId: number) => {
   await api.delete(`/api/items/${itemId}/variants/${variantId}`)
-}
-
-// ---------------- Variants interfaces ----------------
-
-export interface VariantOut {
-  id: number
-  size?: string
-  color?: string
-  sku?: string
-  stock: number
-  price?: number
-}
-
-export type VariantCreate = Omit<VariantOut, 'id'>
-export type VariantUpdate = Partial<Omit<VariantOut, 'id'>> 
+} 

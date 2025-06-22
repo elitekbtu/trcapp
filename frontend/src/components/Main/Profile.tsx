@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { getProfile, type ProfileOut } from '../../api/profile'
+import { getProfile } from '../../api/profile'
+import { type ProfileOut } from '../../api/schemas'
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card'
 import { Badge } from '../ui/badge'
@@ -13,6 +14,12 @@ const Profile = () => {
   const [profile, setProfile] = useState<ProfileOut | null>(null)
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
+
+  // Helper to convert "string | string[]" to string[]
+  const toArray = (value?: string | string[] | null): string[] => {
+    if (!value) return []
+    return Array.isArray(value) ? value : value.split(',').map((v) => v.trim()).filter(Boolean)
+  }
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -214,9 +221,9 @@ const Profile = () => {
               <h3 className="text-sm font-medium text-muted-foreground mb-3">
                 Любимые цвета
               </h3>
-              {profile.favorite_colors?.length ? (
+              {toArray(profile.favorite_colors).length ? (
                 <div className="flex flex-wrap gap-2">
-                  {profile.favorite_colors.map((color) => (
+                  {toArray(profile.favorite_colors).map((color: string) => (
                     <Badge
                       key={color}
                       className="px-3 py-1.5 capitalize"
@@ -234,9 +241,9 @@ const Profile = () => {
               <h3 className="text-sm font-medium text-muted-foreground mb-3">
                 Любимые бренды
               </h3>
-              {profile.favorite_brands?.length ? (
+              {toArray(profile.favorite_brands).length ? (
                 <div className="flex flex-wrap gap-2">
-                  {profile.favorite_brands.map((brand) => (
+                  {toArray(profile.favorite_brands).map((brand: string) => (
                     <Badge
                       key={brand}
                       variant="secondary"

@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import type { CommentOut } from '../../../api/items'
-import { listItemComments, addItemComment, likeItemComment, deleteItemComment } from '../../../api/items'
+import { type CommentOut } from '../../../api/schemas'
+import { listItemComments, addItemComment, likeComment, deleteItemComment } from '../../../api/items'
 import api from '../../../api/client'
 import { Button } from '../../ui/button'
-import { Heart, ShoppingBag, ChevronLeft, MessageSquare } from 'lucide-react'
+import { Heart, ShoppingBag, ChevronLeft, MessageSquare, Trash2 } from 'lucide-react'
 import RatingStars from '../../common/RatingStars'
 import { useAuth } from '../../../context/AuthContext'
-import { Card, CardContent } from '../../ui/card'
+import { Card, CardContent, CardHeader } from '../../ui/card'
 import { Badge } from '../../ui/badge'
 import { Skeleton } from '../../ui/skeleton'
 import { Textarea } from '../../ui/textarea'
@@ -388,8 +388,8 @@ const ItemDetail = () => {
             {comments.map((c) => (
               <motion.li key={c.id} variants={itemVariants}>
                 <Card className="overflow-hidden">
-                  <CardContent className="p-6">
-                    <div className="mb-4 flex items-center justify-between">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
                       <div>
                         <p className="font-medium">Пользователь</p>
                         <p className="text-sm text-muted-foreground">
@@ -403,7 +403,7 @@ const ItemDetail = () => {
                       {(user?.id === c.user_id || isAdmin) && (
                         <Button
                           variant="ghost"
-                          size="sm"
+                          size="icon"
                           className="text-red-500 hover:text-red-600"
                           onClick={async () => {
                             if (!id) return
@@ -416,11 +416,12 @@ const ItemDetail = () => {
                             }
                           }}
                         >
-                          Удалить
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       )}
                     </div>
-                    
+                  </CardHeader>
+                  <CardContent>
                     {c.rating !== undefined && c.rating !== null && (
                       <div className="mb-4">
                         <RatingStars value={c.rating} />
@@ -435,16 +436,14 @@ const ItemDetail = () => {
                         size="sm"
                         className="flex items-center gap-2"
                         onClick={async () => {
-                          if (!id) return
+                          if (!id || !user) return;
                           try {
-                            const resp = await likeItemComment(Number(id), c.id)
-                            setComments((prev) =>
-                              prev.map((x) =>
-                                x.id === c.id ? { ...x, likes: resp.liked ? x.likes + 1 : x.likes - 1 } : x
-                              )
-                            )
+                            await likeComment(Number(id), c.id);
+                            // Refetch comments to get updated like count
+                            const updatedComments = await listItemComments(Number(id));
+                            setComments(updatedComments);
                           } catch (err) {
-                            console.error(err)
+                            console.error(err);
                           }
                         }}
                       >

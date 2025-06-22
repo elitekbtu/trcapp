@@ -31,6 +31,7 @@ class Settings(BaseSettings):
         env_file = ".env"
         case_sensitive = True
 
+
 @lru_cache
 def get_settings() -> Settings:
     """Cached settings to avoid re-reading on each access."""

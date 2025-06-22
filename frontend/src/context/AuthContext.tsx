@@ -1,10 +1,11 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { loginApi, registerApi, logoutApi, type TokensUser } from '../api/auth'
+import { loginApi, registerApi, logoutApi } from '../api/auth'
 import { getStoredTokens, clearStoredTokens } from '../api/client'
 import api from '../api/client'
+import { type ProfileOut } from '../api/schemas'
 
 interface AuthContextProps {
-  user?: TokensUser['user']
+  user?: ProfileOut
   loading: boolean
   login: (email: string, password: string) => Promise<void>
   register: (email: string, password: string) => Promise<void>
@@ -15,11 +16,11 @@ interface AuthContextProps {
 const AuthContext = createContext<AuthContextProps | undefined>(undefined)
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<TokensUser['user'] | undefined>(() => {
+  const [user, setUser] = useState<ProfileOut | undefined>(() => {
     const stored = localStorage.getItem('user')
     if (stored) {
       try {
-        return JSON.parse(stored) as TokensUser['user']
+        return JSON.parse(stored) as ProfileOut
       } catch {
         return undefined
       }
@@ -30,7 +31,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchMe = async () => {
     try {
-      const resp = await api.get('/api/me')
+      const resp = await api.get<ProfileOut>('/api/me')
       setUser(resp.data)
       persistUser(resp.data)
     } catch {
@@ -50,7 +51,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [])
 
-  const persistUser = (u?: TokensUser['user']) => {
+  const persistUser = (u?: ProfileOut) => {
     if (u) {
       localStorage.setItem('user', JSON.stringify(u))
     } else {

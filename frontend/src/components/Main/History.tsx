@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { viewHistoryItems, clearHistoryItems } from '../../api/items'
-import { viewHistoryOutfits, clearHistoryOutfits } from '../../api/outfits'
+import { viewedItems, clearViewHistory } from '../../api/items'
+import { viewedOutfits, clearOutfitViewHistory } from '../../api/outfits'
 import { Card, CardContent } from '../ui/card'
 import { Button } from '../ui/button'
 import { Badge } from '../ui/badge'
@@ -32,8 +32,8 @@ const History = () => {
   const fetchData = async () => {
     try {
       const [itemsResp, outfitsResp] = await Promise.all([
-        viewHistoryItems(),
-        viewHistoryOutfits(),
+        viewedItems(),
+        viewedOutfits(),
       ])
       setItems(itemsResp)
       setOutfits(outfitsResp)
@@ -50,7 +50,7 @@ const History = () => {
 
   const handleClear = async () => {
     try {
-      await Promise.all([clearHistoryItems(), clearHistoryOutfits()])
+      await Promise.all([clearViewHistory(), clearOutfitViewHistory()])
       setItems([])
       setOutfits([])
     } catch (err) {

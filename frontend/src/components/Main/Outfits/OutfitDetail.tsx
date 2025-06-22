@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom'
 import api from '../../../api/client'
 import { Button } from '../../ui/button'
 import { Heart } from 'lucide-react'
-import type { OutfitCommentOut } from '../../../api/outfits'
+import { type OutfitCommentOut } from '../../../api/schemas'
 import {
   toggleFavoriteOutfit,
   listOutfitComments,
@@ -60,12 +60,30 @@ const OutfitDetail = () => {
     if (id) fetchOutfit()
   }, [id])
 
+  // Need to fetch favorited state separately
+  useEffect(() => {
+    const fetchFavoriteStatus = async () => {
+      if (!id || !user) return
+      try {
+        // We can check if this outfit is in the list of user's favorite outfits
+        const favs = await api.get<Outfit[]>('/api/outfits/favorites')
+        setFavorited(favs.data.some((o) => o.id === Number(id)))
+      } catch (err) {
+        // ignore, e.g. 401
+      }
+    }
+    fetchFavoriteStatus()
+  }, [id, user])
+
   const handleToggleFavorite = async () => {
-    if (!id) return
+    if (!id || user === null) return
+    // Optimistic update
+    setFavorited((prev) => !prev)
     try {
-      const resp = await toggleFavoriteOutfit(Number(id))
-      setFavorited(resp.favorited)
+      await toggleFavoriteOutfit(Number(id))
     } catch (err) {
+      // Revert on error
+      setFavorited((prev) => !prev)
       console.error(err)
     }
   }
@@ -218,16 +236,14 @@ const OutfitDetail = () => {
                 <button
                   className="flex items-center gap-1 hover:text-primary"
                   onClick={async () => {
-                    if (!id) return
+                    if (!id || !user) return;
                     try {
-                      const resp = await likeOutfitComment(Number(id), c.id)
-                      setComments((prev) =>
-                        prev.map((x) =>
-                          x.id === c.id ? { ...x, likes: resp.liked ? x.likes + 1 : x.likes - 1 } : x
-                        )
-                      )
+                      await likeOutfitComment(Number(id), c.id);
+                      // Refetch comments to get updated like count
+                      const updatedComments = await listOutfitComments(Number(id));
+                      setComments(updatedComments);
                     } catch (err) {
-                      console.error(err)
+                      console.error(err);
                     }
                   }}
                 >

@@ -1,25 +1,11 @@
 import api from './client'
-
-export interface User {
-  id: number
-  email: string
-  is_admin?: boolean
-  is_active?: boolean
-}
-
-export interface UserCreateAdmin {
-  email: string
-  password: string
-  is_admin?: boolean
-  is_active?: boolean
-}
-
-export interface UserUpdateAdmin {
-  email?: string
-  password?: string
-  is_admin?: boolean
-  is_active?: boolean
-}
+import {
+  type ItemOut,
+  type OutfitOut,
+  type UserCreateAdmin,
+  type UserOut as User,
+  type UserUpdateAdmin,
+} from './schemas'
 
 export const listUsers = async () => {
   const resp = await api.get<User[]>('/api/users/')
@@ -47,7 +33,7 @@ export const deleteUser = async (id: number) => {
 
 // User-specific content
 export const listUserOutfits = async (userId: number) => {
-  const resp = await api.get('/api/users/' + userId + '/outfits')
+  const resp = await api.get<OutfitOut[]>(`/api/users/${userId}/outfits`)
   return resp.data
 }
 
@@ -56,11 +42,11 @@ export const toggleFavorite = async (userId: number, itemId: number) => {
 }
 
 export const listFavorites = async (userId: number) => {
-  const resp = await api.get(`/api/users/${userId}/favorites`)
+  const resp = await api.get<ItemOut[]>(`/api/users/${userId}/favorites`)
   return resp.data
 }
 
 export const userHistory = async (userId: number, limit?: number) => {
-  const resp = await api.get(`/api/users/${userId}/history`, { params: { limit } })
+  const resp = await api.get<ItemOut[]>(`/api/users/${userId}/history`, { params: { limit } })
   return resp.data
 } 

@@ -6,19 +6,18 @@ import {
   getItem,
   createItem,
   updateItem,
-  type ItemCreate,
-  type ItemUpdate,
   listVariants,
   createVariant as apiCreateVariant,
   deleteVariant as apiDeleteVariant,
-  type VariantCreate,
 } from '../../api/items'
+import { type ItemUpdate, type VariantCreate } from '../../api/schemas'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Textarea } from '../../components/ui/textarea'
 import { Label } from '../../components/ui/label'
 import { useToast } from '../../components/ui/use-toast'
 import { cn } from '../../lib/utils'
+import type { Body_create_item_api_items__post as ItemCreate } from '../../api/schemas'
 
 const emptyItem: ItemCreate = {
   name: '',
@@ -88,13 +87,13 @@ const ItemForm = () => {
     } else if (name === 'category') {
       setForm((prev) => ({ ...prev, category: value, clothing_type: value as any }))
     } else {
-      setForm((prev) => ({ ...prev, [name]: value }))
+      setForm((prev: ItemCreate) => ({ ...prev, [name]: value }))
     }
   }
 
   const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
-    setForm((prev) => ({ ...prev, [name]: value === '' ? undefined : Number(value) }))
+    setForm((prev: ItemCreate) => ({ ...prev, [name]: value === '' ? undefined : Number(value) }))
   }
 
   const handleFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {

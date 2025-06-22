@@ -47,3 +47,15 @@ def create_default_admin():
     except Exception:
         pass
     db.close()
+
+app.get("/api/health")
+async def health_check():
+    return {"status": "ok", "message": "Service is running"}
+
+@app.get("/api/health/ready")
+async def readiness_check():
+    return {"status": "ok", "message": "Service is ready"}
+
+@app.get("/api/me", response_model=ProfileOut)
+async def get_me(user: User = Depends(get_current_user)):
+    return ProfileOut.from_orm(user)

@@ -9,14 +9,14 @@ class CartItem(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    item_id = Column(Integer, ForeignKey("items.id", ondelete="CASCADE"), nullable=False, index=True)
+    variant_id = Column(Integer, ForeignKey("item_variants.id", ondelete="CASCADE"), nullable=False, index=True)
     quantity = Column(Integer, nullable=False, default=1)
     added_at = Column(DateTime(timezone=True), server_default=func.now())
 
     user = relationship("User", back_populates="cart_items")
-    item = relationship("Item")
+    variant = relationship("ItemVariant")
 
     __table_args__ = (
-        UniqueConstraint("user_id", "item_id", name="uq_cart_user_item"),
+        UniqueConstraint("user_id", "variant_id", name="uq_cart_user_variant"),
         CheckConstraint("quantity > 0", name="ck_cart_quantity_positive"),
     ) 

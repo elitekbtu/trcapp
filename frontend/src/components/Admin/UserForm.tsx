@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Loader2, ArrowLeft, Save } from 'lucide-react'
-import { getUser, createUser, updateUser, type UserCreateAdmin, type UserUpdateAdmin } from '../../api/users'
+import { getUser, createUser, updateUser } from '../../api/users'
+import { type UserCreateAdmin, type UserUpdateAdmin } from '../../api/schemas'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
@@ -55,11 +56,11 @@ const UserForm = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
-    setForm((prev) => ({ ...prev, [name]: value }))
+    setForm((prev: UserCreateAdmin) => ({ ...prev, [name]: value }))
   }
 
   const handleToggle = (name: keyof UserCreateAdmin) => {
-    setForm((prev) => ({ ...prev, [name]: !prev[name] }))
+    setForm((prev: UserCreateAdmin) => ({ ...prev, [name]: !prev[name] }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

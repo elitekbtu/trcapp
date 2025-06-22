@@ -1,25 +1,18 @@
 import api from './client'
-import type { ItemOut } from './items'
-
-export interface CartStateOut {
-  items: CartItemOut[]
-  total_items: number
-  total_price: number
-}
-
-export interface CartItemOut {
-  id: number
-  quantity: number
-  item: ItemOut
-}
+import { type CartItemOut, type CartStateOut } from './schemas'
 
 export const listCartItems = async () => {
   const resp = await api.get<CartItemOut[]>('/api/cart/')
   return resp.data
 }
 
+export const getCartState = async () => {
+  const resp = await api.get<CartStateOut>('/api/cart/state')
+  return resp.data
+}
+
 export const addToCart = async (itemId: number, quantity = 1) => {
-  const resp = await api.post<CartStateOut>(`/api/cart/${itemId}`, {}, {
+  const resp = await api.post<CartStateOut>(`/api/cart/${itemId}`, null, {
     params: { qty: quantity },
   })
   return resp.data

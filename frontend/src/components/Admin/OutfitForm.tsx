@@ -2,13 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Loader2, ArrowLeft, Save } from 'lucide-react'
-import {
-  createOutfit,
-  updateOutfit,
-  getOutfit,
-  type OutfitCreate,
-  type OutfitUpdate,
-} from '../../api/outfits'
+import { createOutfit, updateOutfit, getOutfit } from '../../api/outfits'
+import { type OutfitCreate, type OutfitUpdate } from '../../api/schemas'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Textarea } from '../../components/ui/textarea'
@@ -47,11 +42,11 @@ const OutfitForm = () => {
             name: data.name,
             style: data.style,
             description: data.description ?? '',
-            top_ids: data.tops.map((t) => t.id),
-            bottom_ids: data.bottoms.map((b) => b.id),
-            footwear_ids: data.footwear.map((f) => f.id),
-            accessories_ids: data.accessories.map((a) => a.id),
-            fragrances_ids: data.fragrances.map((fr) => fr.id),
+            top_ids: (data.tops || []).map((t) => t.id),
+            bottom_ids: (data.bottoms || []).map((b) => b.id),
+            footwear_ids: (data.footwear || []).map((f) => f.id),
+            accessories_ids: (data.accessories || []).map((a) => a.id),
+            fragrances_ids: (data.fragrances || []).map((fr) => fr.id),
             collection: data.collection ?? '',
           })
         }
@@ -71,7 +66,7 @@ const OutfitForm = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
-    setForm((prev) => ({ ...prev, [name]: value }))
+    setForm((prev: OutfitCreate) => ({ ...prev, [name]: value }))
   }
 
   const handleIdsChange = (name: keyof OutfitCreate, value: string) => {
@@ -80,7 +75,7 @@ const OutfitForm = () => {
       .map((v) => v.trim())
       .filter(Boolean)
       .map(Number)
-    setForm((prev) => ({ ...prev, [name]: ids }))
+    setForm((prev: OutfitCreate) => ({ ...prev, [name]: ids as any }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

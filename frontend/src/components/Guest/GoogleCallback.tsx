@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api, { setStoredTokens } from '../../api/client'
-import type { TokensUser } from '../../api/auth'
+import { type TokensUserOut } from '../../api/schemas'
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
 import { ErrorMessage } from '../../components/ui/ErrorMessage' 
 
@@ -21,9 +21,9 @@ const GoogleCallback = () => {
           throw new Error('Authorization code not found')
         }
 
-        const resp = await api.get<TokensUser>(
-          `/api/auth/google/callback?code=${encodeURIComponent(code)}`
-        )
+        const resp = await api.get<TokensUserOut>('/api/auth/google/callback', {
+          params: { code },
+        })
         
         const { access_token, refresh_token, user } = resp.data
         

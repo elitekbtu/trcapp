@@ -1,15 +1,18 @@
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
-from app.api.v1.endpoints.items.schemas import ItemOut
 
 
 class CartItemOut(BaseModel):
-    id: int
+    item_id: int
+    variant_id: int
+    name: str
+    brand: Optional[str]
+    image_url: Optional[str]
+    size: Optional[str]
+    color: Optional[str]
+    sku: Optional[str]
     quantity: int
-    item: ItemOut
-
-    class Config:
-        orm_mode = True
+    price: Optional[float]
 
 
 class QuantityUpdate(BaseModel):
@@ -19,7 +22,4 @@ class QuantityUpdate(BaseModel):
 class CartStateOut(BaseModel):
     items: List[CartItemOut]
     total_items: int
-    total_price: float
-
-    class Config:
-        orm_mode = True 
+    total_price: float 

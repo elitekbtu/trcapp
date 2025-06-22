@@ -21,4 +21,5 @@ class ItemVariant(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    item = relationship("Item", back_populates="variants") 
+    item = relationship("Item", back_populates="variants")
+    cart_items = relationship("CartItem", back_populates="variant", cascade="all, delete-orphan") 

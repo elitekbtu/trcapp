@@ -1,9 +1,9 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Устанавливаем зависимости
+# Устанавливаем зависимости --omit=dev
 COPY package*.json ./
-RUN npm install --omit=dev
+RUN npm install 
 
 # Копируем исходники и собираем приложение
 COPY . .

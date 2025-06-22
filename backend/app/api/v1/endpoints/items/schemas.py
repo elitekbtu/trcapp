@@ -68,6 +68,7 @@ class ItemOut(ItemCreate):
     collection: Optional[str] = None
     image_urls: Optional[List[str]] = None
     variants: Optional[List[VariantOut]] = None
+    is_favorite: Optional[bool] = None
 
     class Config:
         orm_mode = True
