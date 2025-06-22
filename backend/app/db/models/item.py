@@ -13,7 +13,7 @@ class Item(Base):
     name = Column(String(100), nullable=False, index=True)
     brand = Column(String(50), nullable=True, index=True)
     description = Column(Text, nullable=True)
-    price = Column(Float, nullable=True, index=True) # Base price, can be overridden by variant
+    price = Column(Float, nullable=True, index=True)
     category = Column(String(50), nullable=True, index=True)
     article = Column(String(50), nullable=True, index=True)
     style = Column(String(50), nullable=True, index=True)
@@ -31,7 +31,6 @@ class Item(Base):
     comments = relationship("Comment", back_populates="item", cascade="all, delete-orphan")
     images = relationship("ItemImage", back_populates="item", cascade="all, delete-orphan")
 
-    # Variations / stock keeping units (SKU)
     variants = relationship("ItemVariant", back_populates="item", cascade="all, delete-orphan")
 
     @property

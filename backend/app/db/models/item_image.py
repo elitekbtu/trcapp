@@ -12,5 +12,4 @@ class ItemImage(Base):
     image_url = Column(String(255), nullable=False)
     position = Column(Integer, nullable=True, default=0)
 
-    # Relationships
     item = relationship("Item", back_populates="images") 

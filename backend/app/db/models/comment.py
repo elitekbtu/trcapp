@@ -18,7 +18,6 @@ class Comment(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    # Relationships
     user = relationship("User", back_populates="comments")
     item = relationship("Item", back_populates="comments")
     outfit = relationship("Outfit", back_populates="comments")

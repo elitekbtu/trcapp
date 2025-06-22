@@ -3,6 +3,7 @@ import api, { setStoredTokens, clearStoredTokens } from './client'
 export interface TokensUser {
   access_token: string
   refresh_token: string
+  token_type: string
   user: {
     id: number
     email: string
@@ -10,6 +11,15 @@ export interface TokensUser {
     avatar?: string | null
     first_name?: string | null
     last_name?: string | null
+    phone_number?: string | null
+    date_of_birth?: string | null
+    height?: number | null
+    weight?: number | null
+    chest?: number | null
+    waist?: number | null
+    hips?: number | null
+    favorite_colors?: string[] | null
+    favorite_brands?: string[] | null
   }
 }
 
@@ -59,4 +69,19 @@ export const logoutApi = async (refreshToken?: string) => {
     // ignore
   }
   clearStoredTokens()
+}
+
+export const googleLoginApi = () => {
+  const googleLoginUrl = `${api.defaults.baseURL}/api/auth/google/login`
+  window.location.href = googleLoginUrl
+}
+
+export const handleGoogleCallbackApi = async (code: string) => {
+  try {
+    const resp = await api.get<TokensUser>('/api/auth/google/callback', { params: { code } })
+    setStoredTokens(resp.data.access_token, resp.data.refresh_token)
+    return resp.data
+  } catch (error: any) {
+    throw new Error('Ошибка при аутентификации через Google')
+  }
 }

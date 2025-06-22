@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, status, Query, UploadFile, File, Form
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.security import require_admin, get_current_user_optional, get_current_user
+from app.core.security import require_admin, get_current_user_optional, get_current_user, get_current_user_or_guest
 from app.db.models.user import User
 from . import service
 from .schemas import ItemOut, ItemUpdate, VariantOut, VariantCreate, VariantUpdate, CommentOut, CommentCreate
@@ -36,17 +36,30 @@ async def create_item(
 def list_items(
     skip: int = 0,
     limit: int = 100,
-    q: Optional[str] = Query(None),
-    category: Optional[str] = Query(None),
-    style: Optional[str] = Query(None),
-    collection: Optional[str] = Query(None),
-    min_price: Optional[float] = Query(None),
-    max_price: Optional[float] = Query(None),
-    size: Optional[str] = Query(None),
-    sort_by: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
+    q: Optional[str] = None,
+    category: Optional[str] = None,
+    style: Optional[str] = None,
+    collection: Optional[str] = None,
+    min_price: Optional[float] = None,
+    max_price: Optional[float] = None,
+    size: Optional[str] = None,
+    sort_by: Optional[str] = None,
+    clothing_type: Optional[str] = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user_or_guest),
 ):
-    return service.list_items(db, skip, limit, q, category, style, collection, min_price, max_price, size, sort_by)
+    filters = {
+        "q": q,
+        "category": category,
+        "style": style,
+        "collection": collection,
+        "min_price": min_price,
+        "max_price": max_price,
+        "size": size,
+        "sort_by": sort_by,
+        "clothing_type": clothing_type,
+    }
+    return service.list_items(db, filters, skip, limit, user.id)
 
 
 @router.get("/trending", response_model=List[ItemOut])

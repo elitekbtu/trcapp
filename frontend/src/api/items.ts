@@ -88,8 +88,7 @@ export const itemsByCollection = async (name: string) => {
 // ---------- Favorites ----------
 
 export const toggleFavoriteItem = async (id: number) => {
-  const resp = await api.post<{ favorited: boolean }>(`/api/items/${id}/favorite`, {})
-  return resp.data
+  await api.post(`/api/items/${id}/favorite`, {})
 }
 
 export const listFavoriteItems = async () => {
@@ -133,8 +132,7 @@ export const addItemComment = async (itemId: number, data: CommentCreate) => {
 }
 
 export const likeItemComment = async (itemId: number, commentId: number) => {
-  const resp = await api.post<{ liked: boolean }>(`/api/items/${itemId}/comments/${commentId}/like`, {})
-  return resp.data
+  await api.post(`/api/items/${itemId}/comments/${commentId}/like`, {})
 }
 
 // ---------- Delete Comment ----------

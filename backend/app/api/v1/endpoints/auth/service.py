@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.security import get_password_hash, create_access_token, authenticate_user, blacklist_token, decode_token, create_refresh_token, blacklist_refresh_token, decode_refresh_token, ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS
 from app.core.config import get_settings
 from app.db.models.user import User
-from app.api.profile import ProfileOut
+from app.api.v1.endpoints.profile.schemas import ProfileOut
 from .schemas import UserCreate, RefreshTokenIn, TokensUserOut, TokensOut
 
 
@@ -131,8 +131,7 @@ def refresh_token(body: RefreshTokenIn):
     sub = rt_payload.get("sub")
     if sub is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token payload")
-
-    # Revoke the used refresh token (rotation)
+        
     exp_ts = rt_payload.get("exp")
     ttl = None
     if exp_ts is not None:

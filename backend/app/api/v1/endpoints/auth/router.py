@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Body, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -13,13 +13,23 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
 @router.post("/register", response_model=TokensUserOut, status_code=status.HTTP_201_CREATED)
-def register(user_in: UserCreate, db: Session = Depends(get_db)):
-    return service.register(db, user_in)
+def register(body: service.UserCreate, db: Session = Depends(get_db)):
+    result = service.register_user(db, body.email, body.password)
+    if not result:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
+    return result
 
 
 @router.post("/token", response_model=TokensUserOut)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    return service.login(db, form_data)
+    result = service.login_user(db, form_data.username, form_data.password)
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return result
 
 
 @router.get("/google/login")
@@ -33,15 +43,11 @@ async def google_callback(code: str, db: Session = Depends(get_db)):
 
 
 @router.post("/refresh", response_model=TokensOut)
-def refresh_token_route(body: RefreshTokenIn):
-    return service.refresh_token(body)
+def refresh_token_route(body: RefreshTokenIn, db: Session = Depends(get_db)):
+    return service.refresh_token(db, body.refresh_token)
 
 
-@router.post("/logout", status_code=status.HTTP_200_OK)
-async def logout(
-    token: str = Depends(oauth2_scheme),
-    user: User = Depends(get_current_user),
-    body: Optional[RefreshTokenIn] = None,
-):
-    refresh_token = body.refresh_token if body else None
-    return service.logout(token, refresh_token) 
+@router.post("/logout")
+def logout(body: RefreshTokenIn = Body(..., embed=True), db: Session = Depends(get_db)):
+    service.logout_user(db, body.refresh_token)
+    return {"message": "Successfully logged out"} 

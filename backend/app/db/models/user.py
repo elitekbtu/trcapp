@@ -22,16 +22,13 @@ class User(Base):
     height = Column(Float, nullable=True)
     weight = Column(Float, nullable=True)
 
-    # Body sizes
     chest = Column(Float, nullable=True)
     waist = Column(Float, nullable=True)
     hips = Column(Float, nullable=True)
 
-    # Preferences (stored as comma-separated text for portability)
     favorite_colors = relationship("Color", secondary=user_favorite_colors)
     favorite_brands = relationship("Brand", secondary=user_favorite_brands)
 
-    # Relationships
     favorites = relationship(
         "Item",
         secondary=user_favorite_items,
@@ -41,7 +38,6 @@ class User(Base):
 
     view_history = relationship("UserView", back_populates="user", cascade="all, delete-orphan")
 
-    # Favorite outfits
     favorite_outfits = relationship(
         "Outfit",
         secondary="user_favorite_outfits",
@@ -49,13 +45,10 @@ class User(Base):
         lazy="dynamic",
     )
 
-    # View history
     outfit_view_history = relationship("OutfitView", back_populates="user", cascade="all, delete-orphan")
 
-    # Comments authored by the user
     comments = relationship("Comment", back_populates="user", cascade="all, delete-orphan")
 
-    # Comments liked by the user
     liked_comments = relationship(
         "Comment",
         secondary="comment_likes",
@@ -63,5 +56,4 @@ class User(Base):
         lazy="dynamic",
     )
 
-    # Cart items
     cart_items = relationship("CartItem", back_populates="user", cascade="all, delete-orphan", lazy="dynamic") 

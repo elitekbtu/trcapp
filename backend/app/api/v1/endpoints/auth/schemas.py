@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from app.api.profile import ProfileOut
+from app.api.v1.endpoints.profile.schemas import ProfileOut
 
 
 class UserCreate(BaseModel):

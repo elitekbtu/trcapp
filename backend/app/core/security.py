@@ -56,8 +56,6 @@ def decode_token(token: str) -> dict:
 
 
 def blacklist_token(token: str, ttl: int | None = None) -> None:
-    """Add the given token to the Redis blacklist for *ttl* seconds.
-    If *ttl* is None, the token will be stored without an expiry (not recommended)."""
     if not token:
         return
     redis_client = get_redis()
@@ -106,10 +104,6 @@ def require_admin(user: User = Depends(get_current_user)):
     return user
 
 
-# -----------------------------------------------------
-# Refresh token support
-# -----------------------------------------------------
-
 
 def create_refresh_token(data: dict, expires_delta: timedelta | None = None):
     """Return a signed JWT refresh token."""
@@ -147,14 +141,6 @@ def decode_refresh_token(token: str) -> dict:
 
 
 def get_current_user_optional(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
-    """Return the current user if an Authorization header with a valid JWT is present, otherwise None.
-
-    This helper is useful for endpoints that can be accessed anonymously but may optionally
-    utilise the authenticated user (e.g. to personalise results or save view history).
-    The logic is identical to *get_current_user* but all auth failures are silently swallowed
-    and *None* is returned instead of raising HTTP 401.
-    """
-    # Retrieve bearer token from header ("Authorization: Bearer <token>")
     authorization: Optional[str] = request.headers.get("Authorization") if request else None
     if not authorization:
         return None
@@ -163,7 +149,6 @@ def get_current_user_optional(request: Request, db: Session = Depends(get_db)) -
     if scheme.lower() != "bearer" or not token:
         return None
 
-    # If token is blacklisted or invalid we simply return None
     if is_token_blacklisted(token):
         return None
 

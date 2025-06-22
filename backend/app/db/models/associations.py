@@ -4,7 +4,6 @@ from sqlalchemy.orm import relationship
 
 from app.core.database import Base
 
-# Association table for user favorites (many-to-many User <-> Item)
 user_favorite_items = Table(
     "user_favorite_items",
     Base.metadata,
@@ -13,9 +12,7 @@ user_favorite_items = Table(
     Column("created_at", DateTime(timezone=True), server_default=func.now()),
 )
 
-# -------------------- NEW ASSOCIATION TABLES --------------------
 
-# Favorites for outfits (many-to-many User <-> Outfit)
 user_favorite_outfits = Table(
     "user_favorite_outfits",
     Base.metadata,
@@ -24,7 +21,6 @@ user_favorite_outfits = Table(
     Column("created_at", DateTime(timezone=True), server_default=func.now()),
 )
 
-# Likes for comments (many-to-many User <-> Comment)
 comment_likes = Table(
     "comment_likes",
     Base.metadata,
@@ -33,7 +29,6 @@ comment_likes = Table(
     Column("created_at", DateTime(timezone=True), server_default=func.now()),
 )
 
-# History of item views by user
 class UserView(Base):
     __tablename__ = "user_view_history"
 
@@ -42,11 +37,9 @@ class UserView(Base):
     item_id = Column(Integer, ForeignKey("items.id", ondelete="CASCADE"), nullable=False, index=True)
     viewed_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
 
-    # Relationships
     user = relationship("User", back_populates="view_history")
     item = relationship("Item")
 
-# History of outfit views by user
 class OutfitView(Base):
     __tablename__ = "outfit_view_history"
 
@@ -58,7 +51,6 @@ class OutfitView(Base):
     user = relationship("User", back_populates="outfit_view_history")
     outfit = relationship("Outfit")
 
-# Association table for user favorite colors (many-to-many User <-> Color)
 user_favorite_colors = Table(
     "user_favorite_colors",
     Base.metadata,
@@ -66,7 +58,6 @@ user_favorite_colors = Table(
     Column("color_id", Integer, ForeignKey("colors.id", ondelete="CASCADE"), primary_key=True),
 )
 
-# Association table for user favorite brands (many-to-many User <-> Brand)
 user_favorite_brands = Table(
     "user_favorite_brands",
     Base.metadata,

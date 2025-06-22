@@ -14,7 +14,6 @@ settings = get_settings()
 
 app = FastAPI(title=settings.PROJECT_NAME)
 
-# Configure CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.BACKEND_CORS_ORIGINS,
@@ -23,13 +22,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Routers
 app.include_router(api_v1_router, prefix="/api")
 
-# Serve uploaded media files
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
-# Create default admin user (first email from ADMIN_EMAILS, password from env ADMIN_DEFAULT_PASSWORD)
 @app.on_event("startup")
 def create_default_admin():
     from app.core.database import SessionLocal
@@ -45,23 +41,9 @@ def create_default_admin():
     try:
         user = db.query(User).filter(User.email == admin_email).first()
         if not user:
-            password = settings.dict().get("ADMIN_DEFAULT_PASSWORD", "tuka2005")
+            password = settings.dict().get("ADMIN_DEFAULT_PASSWORD", "")
             db.add(User(email=admin_email, hashed_password=get_password_hash(password), is_admin=True))
             db.commit()
     except Exception:
-        # Таблица ещё не создана (миграции не применены)
         pass
     db.close()
-
-@app.get("/api/health")
-async def health_check():
-    return {"status": "ok", "message": "Service is running"}
-
-@app.get("/api/health/ready")
-async def readiness_check():
-    # Here you can add checks for database, redis, etc.
-    return {"status": "ok", "message": "Service is ready"}
-
-@app.get("/api/me", response_model=ProfileOut)
-async def get_me(user: User = Depends(get_current_user)):
-    return ProfileOut.from_orm(user)

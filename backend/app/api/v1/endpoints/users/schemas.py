@@ -13,4 +13,14 @@ class UserUpdateAdmin(BaseModel):
     email: Optional[EmailStr] = None
     password: Optional[str] = None
     is_admin: Optional[bool] = None
-    is_active: Optional[bool] = None 
+    is_active: Optional[bool] = None
+
+
+class UserOut(BaseModel):
+    id: int
+    email: EmailStr
+    is_admin: bool
+    is_active: bool
+
+    class Config:
+        orm_mode = True 

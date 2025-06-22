@@ -12,7 +12,7 @@ class ProfileOut(BaseModel):
     avatar: Optional[HttpUrl] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
-    phone_number: Optional[str] = None
+    phone_number: Optional[constr(regex=PHONE_REGEX)] = None
     date_of_birth: Optional[date] = None
     height: Optional[float] = None
     weight: Optional[float] = None

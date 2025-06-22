@@ -81,8 +81,7 @@ export const trendingOutfits = async (limit?: number) => {
 // ---------- Favorites ----------
 
 export const toggleFavoriteOutfit = async (id: number) => {
-  const resp = await api.post<{ favorited: boolean }>(`/api/outfits/${id}/favorite`, {})
-  return resp.data
+  await api.post(`/api/outfits/${id}/favorite`, {})
 }
 
 export const listFavoriteOutfits = async () => {
@@ -126,8 +125,7 @@ export const addOutfitComment = async (outfitId: number, data: OutfitCommentCrea
 }
 
 export const likeOutfitComment = async (outfitId: number, commentId: number) => {
-  const resp = await api.post<{ liked: boolean }>(`/api/outfits/${outfitId}/comments/${commentId}/like`, {})
-  return resp.data
+  await api.post(`/api/outfits/${outfitId}/comments/${commentId}/like`, {})
 }
 
 // ---------- Delete Comment ----------

@@ -105,53 +105,41 @@ async def create_item(
     return db_item
 
 
-def list_items(
-    db: Session,
-    skip: int = 0,
-    limit: int = 100,
-    q: Optional[str] = None,
-    category: Optional[str] = None,
-    style: Optional[str] = None,
-    collection: Optional[str] = None,
-    min_price: Optional[float] = None,
-    max_price: Optional[float] = None,
-    size: Optional[str] = None,
-    sort_by: Optional[str] = None,
-):
+def list_items(db: Session, filters: dict, skip: int = 0, limit: int = 100, user_id: Optional[int] = None):
     query = db.query(Item)
 
-    if q:
-        search = f"%{q}%"
+    # Dynamically add favorite status if user is logged in
+    if user_id:
+        query = query.add_columns(
+            func.coalesce(FavoriteItem.item_id.isnot(None), False).label("is_favorite")
+        ).outerjoin(FavoriteItem, and_(FavoriteItem.item_id == Item.id, FavoriteItem.user_id == user_id))
+
+    # Apply filters from the dictionary
+    if q := filters.get("q"):
         query = query.filter(
             or_(
-                Item.name.ilike(search),
-                Item.description.ilike(search),
-                Item.brand.ilike(search),
-                Item.article.ilike(search)
+                Item.name.ilike(f"%{q}%"),
+                Item.description.ilike(f"%{q}%"),
+                Item.brand.ilike(f"%{q}%"),
             )
         )
+    if category := filters.get("category"):
+        query = query.filter(Item.category.ilike(f"%{category}%"))
+    if style := filters.get("style"):
+        query = query.filter(Item.style.ilike(f"%{style}%"))
+    if collection := filters.get("collection"):
+        query = query.filter(Item.collection.ilike(f"%{collection}%"))
+    if min_price := filters.get("min_price"):
+        query = query.filter(Item.price >= min_price)
+    if max_price := filters.get("max_price"):
+        query = query.filter(Item.price <= max_price)
+    if size := filters.get("size"):
+        query = query.filter(Item.size.ilike(f"%{size}%"))
+    if clothing_type := filters.get("clothing_type"):
+        query = query.filter(Item.clothing_type.ilike(f"%{clothing_type}%"))
 
-    if category:
-        query = query.filter(Item.category == category)
-
-    if style:
-        query = query.filter(Item.style == style)
-
-    if collection:
-        query = query.filter(Item.collection == collection)
-
-    if min_price is not None or max_price is not None:
-        if min_price is not None and max_price is not None:
-            query = query.filter(and_(Item.price >= min_price, Item.price <= max_price))
-        elif min_price is not None:
-            query = query.filter(Item.price >= min_price)
-        elif max_price is not None:
-            query = query.filter(Item.price <= max_price)
-
-    if size:
-        query = query.filter(Item.size == size)
-
-    if sort_by:
+    # Apply sorting
+    if sort_by := filters.get("sort_by"):
         if sort_by == "price_asc":
             query = query.order_by(Item.price.asc())
         elif sort_by == "price_desc":
@@ -159,7 +147,19 @@ def list_items(
         elif sort_by == "newest":
             query = query.order_by(Item.created_at.desc())
 
-    return query.offset(skip).limit(limit).all()
+    # Paginate and format results
+    paginated_results = query.offset(skip).limit(limit).all()
+
+    if user_id:
+        # If user is logged in, result is a tuple (Item, is_favorite)
+        items = []
+        for item, is_favorite in paginated_results:
+            item.is_favorite = is_favorite
+            items.append(item)
+        return items
+    else:
+        # If user is a guest, result is just the Item object
+        return paginated_results
 
 
 def get_item(db: Session, item_id: int, current_user: Optional[User] = None):
