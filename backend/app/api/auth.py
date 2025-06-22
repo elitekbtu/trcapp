@@ -41,8 +41,6 @@ class TokensOut(TokenOut):
 class TokensUserOut(TokensOut):
     user: ProfileOut
 
-
-# Payload schema for refresh token endpoint
 class RefreshTokenIn(BaseModel):
     refresh_token: str
 

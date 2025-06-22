@@ -46,6 +46,8 @@ class Outfit(Base):
     owner_id = Column(String(50), nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    # Optional collection tag (e.g., 'Summer 24') to group outfits assembled from the same items collection
+    collection = Column(String(100), nullable=True, index=True)
     
     tops = relationship("Item", secondary=outfit_top_association)
     bottoms = relationship("Item", secondary=outfit_bottom_association)

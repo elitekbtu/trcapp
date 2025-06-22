@@ -28,7 +28,6 @@ router = APIRouter(
 )
 
 class ItemCreate(BaseModel):
-    # We keep this for OpenAPI docs when using JSON body, but creation endpoint now uses form fields
     name: str
     brand: Optional[str] = None
     color: Optional[str] = None
@@ -68,7 +67,6 @@ class ItemOut(ItemCreate):
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "uploads/items")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-# Helper to save upload file
 def _save_upload_file(upload: UploadFile, subdir: str = "") -> str:
     """Save uploaded file and return relative path accessible via /uploads."""
     filename = f"{uuid4().hex}_{upload.filename}"
@@ -77,7 +75,6 @@ def _save_upload_file(upload: UploadFile, subdir: str = "") -> str:
     file_path = os.path.join(dir_path, filename)
     with open(file_path, "wb") as f:
         f.write(upload.file.read())
-    # Path to serve: /uploads/items/... (assuming FastAPI mounts /uploads)
     return f"/uploads/items/{subdir + '/' if subdir else ''}{filename}"
 
 @router.post("/", response_model=ItemOut, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_admin)])
@@ -96,7 +93,7 @@ async def create_item(
     image_url: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ):
-    # Determine primary image_url as first uploaded file (if any)
+
     primary_image_url: Optional[str] = None
     image_urls: List[str] = []
 
@@ -107,7 +104,6 @@ async def create_item(
             if idx == 0:
                 primary_image_url = url
 
-    # If no uploaded images but direct URL provided
     if not primary_image_url and image_url:
         primary_image_url = image_url
 
@@ -128,8 +124,7 @@ async def create_item(
     db.add(db_item)
     db.commit()
     db.refresh(db_item)
-
-    # Save image relations
+    
     from app.db.models.item_image import ItemImage
 
     for position, url in enumerate(image_urls):

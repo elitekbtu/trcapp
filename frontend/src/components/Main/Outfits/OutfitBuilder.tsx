@@ -29,7 +29,7 @@ const OutfitBuilder = () => {
     const fetchAll = async () => {
       try {
         const promises = categoryConfig.map((c) =>
-          listItems({ clothing_type: c.apiType, limit: 50 })
+          listItems({ category: c.apiType, limit: 50 })
         )
         const results = await Promise.all(promises)
         const grouped: Record<string, ItemOut[]> = {}
@@ -60,7 +60,7 @@ const OutfitBuilder = () => {
     })
   }
 
-  const mannequinUrl = 'https://i.imgur.com/xXTcmEf.png' // Transparent mannequin silhouette
+  const mannequinUrl = '/maneken.jpg'
 
   if (loading) {
     return <div className="flex h-64 items-center justify-center">{t('common.loading')}</div>
@@ -69,7 +69,7 @@ const OutfitBuilder = () => {
   return (
     <div className="container mx-auto flex flex-col gap-8 px-4 py-8 md:flex-row md:items-start">
       {/* Mannequin Preview */}
-      <div className="relative mx-auto h-[520px] w-[300px] shrink-0">
+      <div className="relative mx-auto h-[520px] w-[300px] shrink-0 shadow-lg">
         <img
           src={mannequinUrl}
           alt="Mannequin"

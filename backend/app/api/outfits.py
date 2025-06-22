@@ -32,6 +32,7 @@ class OutfitCreate(BaseModel):
     name: str
     style: str
     description: Optional[str] = None
+    collection: Optional[str] = None
     top_ids: List[int] = []
     bottom_ids: List[int] = []
     footwear_ids: List[int] = []
@@ -43,12 +44,25 @@ class OutfitCreate(BaseModel):
         if not any(values.get(field) for field in ["top_ids", "bottom_ids", "footwear_ids", 
                                                  "accessories_ids", "fragrances_ids"]):
             raise ValueError("At least one outfit category must contain items")
+        # Validate that, if a collection is provided, all items belong to this collection
+        collection = values.get("collection")
+        if collection:
+            # Item IDs grouped from all categories
+            all_ids = (
+                values.get("top_ids", [])
+                + values.get("bottom_ids", [])
+                + values.get("footwear_ids", [])
+                + values.get("accessories_ids", [])
+                + values.get("fragrances_ids", [])
+            )
+            # We can't access DB in root validator, so runtime validation will be done in endpoint.
         return values
 
 class OutfitUpdate(BaseModel):
     name: Optional[str] = None
     style: Optional[str] = None
     description: Optional[str] = None
+    collection: Optional[str] = None
     top_ids: Optional[List[int]] = None
     bottom_ids: Optional[List[int]] = None
     footwear_ids: Optional[List[int]] = None
@@ -60,6 +74,7 @@ class OutfitOut(BaseModel):
     name: str
     style: str
     description: Optional[str] = None
+    collection: Optional[str] = None
     owner_id: str
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -79,34 +94,26 @@ def create_outfit(outfit_in: OutfitCreate, db: Session = Depends(get_db), user: 
         name=outfit_in.name,
         style=outfit_in.style,
         description=outfit_in.description,
+        collection=outfit_in.collection,
         owner_id=str(user.id)
     )
-    
-    for item_id in outfit_in.top_ids:
-        item = db.get(Item, item_id)
-        if item:
-            db_outfit.tops.append(item)
-    
-    for item_id in outfit_in.bottom_ids:
-        item = db.get(Item, item_id)
-        if item:
-            db_outfit.bottoms.append(item)
-    
-    for item_id in outfit_in.footwear_ids:
-        item = db.get(Item, item_id)
-        if item:
-            db_outfit.footwear.append(item)
-    
-    for item_id in outfit_in.accessories_ids:
-        item = db.get(Item, item_id)
-        if item:
-            db_outfit.accessories.append(item)
-    
-    for item_id in outfit_in.fragrances_ids:
-        item = db.get(Item, item_id)
-        if item:
-            db_outfit.fragrances.append(item)
-    
+
+    # Iterate over CATEGORY_MAP, fetch and validate items, then extend corresponding relationship list
+    for payload_field, (expected_category, rel_attr) in CATEGORY_MAP.items():
+        ids = getattr(outfit_in, payload_field)
+        items = _fetch_items_by_category(db, ids, expected_category)
+        # Use relationship attr e.g., db_outfit.tops etc.
+        getattr(db_outfit, rel_attr).extend(items)
+
+    # If a collection is specified, ensure every selected item belongs to that collection
+    if outfit_in.collection:
+        for item in db_outfit.tops + db_outfit.bottoms + db_outfit.footwear + db_outfit.accessories + db_outfit.fragrances:
+            if item.collection != outfit_in.collection:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Item {item.id} does not belong to collection '{outfit_in.collection}'",
+                )
+
     db.add(db_outfit)
     db.commit()
     db.refresh(db_outfit)
@@ -120,6 +127,7 @@ def list_outfits(
     style: Optional[str] = Query(None),
     min_price: Optional[float] = Query(None),
     max_price: Optional[float] = Query(None),
+    collection: Optional[str] = Query(None),
     sort_by: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user_optional)
@@ -142,6 +150,9 @@ def list_outfits(
     
     if style:
         query = query.filter(Outfit.style == style)
+    
+    if collection:
+        query = query.filter(Outfit.collection == collection)
     
     if sort_by:
         if sort_by == "newest":
@@ -213,25 +224,31 @@ def update_outfit(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Outfit not found")
     _check_owner_or_admin(outfit, user)
     
-    for field in ["name", "style", "description"]:
-        if getattr(outfit_in, field) is not None:
-            setattr(outfit, field, getattr(outfit_in, field))
+    # Track if collection was updated to validate items later
+    collection_changed = False
+    for field in ["name", "style", "description", "collection"]:
+        val = getattr(outfit_in, field)
+        if val is not None:
+            setattr(outfit, field, val)
+            if field == "collection":
+                collection_changed = True
     
-    if outfit_in.top_ids is not None:
-        outfit.tops = [item for item_id in outfit_in.top_ids if (item := db.get(Item, item_id))]
+    # Update category relationships with validation
+    for payload_field, (expected_category, rel_attr) in CATEGORY_MAP.items():
+        ids = getattr(outfit_in, payload_field)
+        if ids is not None:
+            items = _fetch_items_by_category(db, ids, expected_category)
+            setattr(outfit, rel_attr, items)
     
-    if outfit_in.bottom_ids is not None:
-        outfit.bottoms = [item for item_id in outfit_in.bottom_ids if (item := db.get(Item, item_id))]
-    
-    if outfit_in.footwear_ids is not None:
-        outfit.footwear = [item for item_id in outfit_in.footwear_ids if (item := db.get(Item, item_id))]
-    
-    if outfit_in.accessories_ids is not None:
-        outfit.accessories = [item for item_id in outfit_in.accessories_ids if (item := db.get(Item, item_id))]
-    
-    if outfit_in.fragrances_ids is not None:
-        outfit.fragrances = [item for item_id in outfit_in.fragrances_ids if (item := db.get(Item, item_id))]
-    
+    # Validate collection consistency if needed
+    if collection_changed and outfit.collection:
+        for item in outfit.tops + outfit.bottoms + outfit.footwear + outfit.accessories + outfit.fragrances:
+            if item.collection != outfit.collection:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Item {item.id} does not belong to collection '{outfit.collection}'",
+                )
+
     db.commit()
     db.refresh(outfit)
     return _calculate_outfit_price(outfit)
@@ -381,3 +398,38 @@ def _comment_with_likes(comment: Comment):
     data = OutfitCommentOut.from_orm(comment)
     data.likes = comment.liked_by.count() if hasattr(comment.liked_by, 'count') else 0
     return data
+
+# ---------------- Helper -----------------
+
+# Map payload field name to expected item.category value and attribute in Outfit model
+CATEGORY_MAP = {
+    "top_ids": ("top", "tops"),
+    "bottom_ids": ("bottom", "bottoms"),
+    "footwear_ids": ("footwear", "footwear"),
+    "accessories_ids": ("accessories", "accessories"),
+    "fragrances_ids": ("fragrances", "fragrances"),
+}
+
+def _fetch_items_by_category(db: Session, ids: List[int], expected_category: str) -> List[Item]:
+    """Return list of items ensuring they all exist and belong to `expected_category`. Raises HTTPException otherwise."""
+    if not ids:
+        return []
+
+    items = db.query(Item).filter(Item.id.in_(ids)).all()
+
+    # Quick check length first
+    if len(items) != len(ids):
+        missing = set(ids) - {item.id for item in items}
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Items not found: {', '.join(map(str, missing))}",
+        )
+
+    wrong_category = [item.id for item in items if item.category != expected_category]
+    if wrong_category:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Items {wrong_category} do not belong to category '{expected_category}'",
+        )
+
+    return items

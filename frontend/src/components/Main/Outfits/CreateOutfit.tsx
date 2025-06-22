@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Loader2, Save } from 'lucide-react'
 import { Button } from '../../ui/button'
@@ -23,6 +23,9 @@ const idFieldMap: Record<string, string> = {
   fragrances: 'fragrances_ids',
 }
 
+// Required categories to create a valid outfit
+const requiredCategories = ['tops', 'bottoms'] as const
+
 const CreateOutfit = () => {
   const navigate = useNavigate()
   const { toast } = useToast()
@@ -36,10 +39,23 @@ const CreateOutfit = () => {
   const [style, setStyle] = useState('')
   const [description, setDescription] = useState('')
 
+  // Compute total price of currently selected items
+  const totalPrice = useMemo(() => {
+    let total = 0
+    categoryConfig.forEach((c) => {
+      const list = itemsByCat[c.key] || []
+      const sel = list[indexByCat[c.key]]
+      if (sel && typeof sel.price === 'number') {
+        total += sel.price
+      }
+    })
+    return total
+  }, [itemsByCat, indexByCat])
+
   useEffect(() => {
     const fetchAll = async () => {
       try {
-        const promises = categoryConfig.map((c) => listItems({ clothing_type: c.apiType, limit: 50 }))
+        const promises = categoryConfig.map((c) => listItems({ category: c.apiType, limit: 50 }))
         const results = await Promise.all(promises)
         const grouped: Record<string, ItemOut[]> = {}
         const idx: IndexState = {}
@@ -76,6 +92,21 @@ const CreateOutfit = () => {
       return
     }
 
+    // Validate required categories
+    const missing = requiredCategories.filter((key) => {
+      const list = itemsByCat[key] || []
+      const sel = list[indexByCat[key]]
+      return !sel
+    })
+    if (missing.length) {
+      toast({
+        variant: 'destructive',
+        title: 'Неполный образ',
+        description: 'Выберите как минимум верх и низ, чтобы завершить образ.',
+      })
+      return
+    }
+
     setSubmitting(true)
     try {
       // Prepare payload
@@ -95,9 +126,10 @@ const CreateOutfit = () => {
       const newOutfit = await createOutfit(payload as any)
       toast({ title: 'Образ создан', description: 'Вы перенаправлены на страницу образа' })
       navigate(`/outfits/${newOutfit.id}`)
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
-      toast({ variant: 'destructive', title: 'Ошибка', description: 'Не удалось создать образ' })
+      const message = err?.response?.data?.detail || 'Не удалось создать образ'
+      toast({ variant: 'destructive', title: 'Ошибка', description: message })
     } finally {
       setSubmitting(false)
     }
@@ -117,8 +149,8 @@ const CreateOutfit = () => {
       <div className="flex-1">
         {/* Reuse preview from builder */}
         {/* We'll render similarly */}
-        <div className="relative mx-auto h-[520px] w-[300px]">
-          <img src="maneken.jpg" alt="Манекен" className="absolute inset-0 h-full w-full object-contain" />
+        <div className="relative mx-auto h-[520px] w-[300px] shadow-lg">
+          <img src="/maneken.jpg" alt="Манекен" className="absolute inset-0 h-full w-full object-contain" />
           {categoryConfig.map((c, i) => {
             const list = itemsByCat[c.key] || []
             const sel = list[indexByCat[c.key]]
@@ -127,6 +159,11 @@ const CreateOutfit = () => {
               <img key={c.key} src={sel.image_url} alt={sel.name} className="absolute inset-0 h-full w-full object-contain" style={{ zIndex: i + 1 }} />
             )
           })}
+        </div>
+        {/* Total price */}
+        <div className="mt-4 text-center text-sm font-medium">
+          Примерная стоимость:{' '}
+          {totalPrice > 0 ? `${totalPrice.toLocaleString('ru-RU')} ₽` : '—'}
         </div>
 
         {/* Category controls */}
