@@ -1,15 +1,7 @@
 from typing import Optional
 from datetime import date
-from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, HttpUrl, constr, validator
-from sqlalchemy.orm import Session
 
-from app.core.database import get_db
-from app.core.security import get_current_user
-from app.db.models.user import User
-from app.db.models.outfit import Outfit
-
-router = APIRouter(prefix="/api/profile", tags=["Profile"], dependencies=[Depends(get_current_user)])
 
 PHONE_REGEX = r"^\+?[0-9]{7,15}$"
 
@@ -76,50 +68,4 @@ class ProfileUpdate(BaseModel):
         from datetime import date as _date
         if v is not None and v > _date.today():
             raise ValueError("Date of birth cannot be in the future")
-        return v
-
-
-@router.get("/", response_model=ProfileOut)
-def get_profile(user: User = Depends(get_current_user)):
-    # convert prefs
-    if user.favorite_colors:
-        user.favorite_colors = user.favorite_colors.split(",")
-    if user.favorite_brands:
-        user.favorite_brands = user.favorite_brands.split(",")
-    return user
-
-
-@router.patch("/", response_model=ProfileOut)
-def update_profile(
-    profile_in: ProfileUpdate,
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
-):
-    update_data = profile_in.dict(exclude_unset=True)
-    # Ensure at least one field present
-    if not update_data:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No data provided")
-
-    for field, value in update_data.items():
-        if field in {"favorite_colors", "favorite_brands"} and isinstance(value, list):
-            value = ",".join(value)
-        setattr(user, field, value)
-
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    if user.favorite_colors:
-        user.favorite_colors = user.favorite_colors.split(",")
-    if user.favorite_brands:
-        user.favorite_brands = user.favorite_brands.split(",")
-    return user
-
-
-@router.delete("/", status_code=status.HTTP_204_NO_CONTENT)
-def delete_profile(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    """Delete the current user's account along with their outfits and related data."""
-    # Remove related outfits (or any other cascading entities) first to keep DB integrity
-    db.query(Outfit).filter(Outfit.owner_id == str(user.id)).delete()
-    db.delete(user)
-    db.commit()
-    return None 
+        return v 

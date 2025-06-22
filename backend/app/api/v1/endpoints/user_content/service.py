@@ -1,17 +1,13 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
-from app.core.database import get_db
-from app.core.security import get_current_user, is_admin
+from app.core.security import is_admin
 from app.db.models.user import User
 from app.db.models.item import Item
 from app.db.models.associations import user_favorite_items, UserView
-from app.api.items import ItemOut
-
-router = APIRouter(prefix="/api/users", tags=["UserContent"], dependencies=[Depends(get_current_user)])
 
 
 def _check_access(target_user_id: int, current: User):
@@ -19,17 +15,8 @@ def _check_access(target_user_id: int, current: User):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
 
-# ---------- Favorites ----------
-
-
-@router.post("/{user_id}/favorites/{item_id}", status_code=status.HTTP_200_OK)
-async def toggle_favorite(
-    user_id: int,
-    item_id: int,
-    db: Session = Depends(get_db),
-    current: User = Depends(get_current_user),
-):
-    _check_access(user_id, current)
+async def toggle_favorite(db: Session, user_id: int, item_id: int, current_user: User):
+    _check_access(user_id, current_user)
 
     item = db.get(Item, item_id)
     if not item:
@@ -55,30 +42,16 @@ async def toggle_favorite(
         return {"detail": "Added to favorites"}
 
 
-@router.get("/{user_id}/favorites", response_model=List[ItemOut])
-async def list_favorites(
-    user_id: int,
-    db: Session = Depends(get_db),
-    current: User = Depends(get_current_user),
-):
-    _check_access(user_id, current)
+async def list_favorites(db: Session, user_id: int, current_user: User) -> List[Item]:
+    _check_access(user_id, current_user)
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return user.favorites.all()
 
 
-# ---------- History ----------
-
-
-@router.get("/{user_id}/history", response_model=List[ItemOut])
-async def user_history(
-    user_id: int,
-    limit: int = 50,
-    db: Session = Depends(get_db),
-    current: User = Depends(get_current_user),
-):
-    _check_access(user_id, current)
+async def user_history(db: Session, user_id: int, limit: int, current_user: User) -> List[Item]:
+    _check_access(user_id, current_user)
 
     sub = (
         db.query(UserView.item_id)

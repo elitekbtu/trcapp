@@ -1,8 +1,9 @@
-from sqlalchemy import Column, Integer, String, Boolean, Date, Float, Text
+from sqlalchemy import Column, Integer, String, Boolean, Date, Float
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
-from app.db.models.associations import user_favorite_items, UserView
+from app.db.models.associations import user_favorite_items, UserView, user_favorite_colors, user_favorite_brands
+from app.db.models.preferences import Color, Brand
 
 
 class User(Base):
@@ -27,8 +28,8 @@ class User(Base):
     hips = Column(Float, nullable=True)
 
     # Preferences (stored as comma-separated text for portability)
-    favorite_colors = Column(Text, nullable=True)
-    favorite_brands = Column(Text, nullable=True)
+    favorite_colors = relationship("Color", secondary=user_favorite_colors)
+    favorite_brands = relationship("Brand", secondary=user_favorite_brands)
 
     # Relationships
     favorites = relationship(

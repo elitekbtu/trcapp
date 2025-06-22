@@ -56,4 +56,20 @@ class OutfitView(Base):
     viewed_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
 
     user = relationship("User", back_populates="outfit_view_history")
-    outfit = relationship("Outfit") 
+    outfit = relationship("Outfit")
+
+# Association table for user favorite colors (many-to-many User <-> Color)
+user_favorite_colors = Table(
+    "user_favorite_colors",
+    Base.metadata,
+    Column("user_id", Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("color_id", Integer, ForeignKey("colors.id", ondelete="CASCADE"), primary_key=True),
+)
+
+# Association table for user favorite brands (many-to-many User <-> Brand)
+user_favorite_brands = Table(
+    "user_favorite_brands",
+    Base.metadata,
+    Column("user_id", Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("brand_id", Integer, ForeignKey("brands.id", ondelete="CASCADE"), primary_key=True),
+) 
