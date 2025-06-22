@@ -1,0 +1,31 @@
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime
+from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
+
+from app.core.database import Base
+
+class ItemVariant(Base):
+    """SKU / вариант товара (цвет/размер/прочее) с учётом остатка."""
+
+    __tablename__ = "item_variants"
+
+    id = Column(Integer, primary_key=True, index=True)
+    item_id = Column(Integer, ForeignKey("items.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Опциональные атрибуты варианта
+    size = Column(String(20), nullable=True, index=True)
+    color = Column(String(30), nullable=True, index=True)
+    # Дополнительный артикул, если отличается от item.article
+    sku = Column(String(50), nullable=True, unique=True, index=True)
+
+    # Остаток на складе
+    stock = Column(Integer, nullable=False, default=0)
+
+    # Может переопределять базовую цену (например, +100 руб за большой размер)
+    price = Column(Float, nullable=True)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationships
+    item = relationship("Item", back_populates="variants") 

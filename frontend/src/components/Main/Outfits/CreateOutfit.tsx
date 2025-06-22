@@ -23,8 +23,8 @@ const idFieldMap: Record<string, string> = {
   fragrances: 'fragrances_ids',
 }
 
-// Required categories to create a valid outfit
-const requiredCategories = ['tops', 'bottoms'] as const
+// At least one category must be selected for a valid outfit (рест не обязательно)
+// Backend всё равно проверит, что минимум одна категория есть
 
 const CreateOutfit = () => {
   const navigate = useNavigate()
@@ -92,17 +92,16 @@ const CreateOutfit = () => {
       return
     }
 
-    // Validate required categories
-    const missing = requiredCategories.filter((key) => {
-      const list = itemsByCat[key] || []
-      const sel = list[indexByCat[key]]
-      return !sel
+    // Validate at least one selected item
+    const hasAnySelected = categoryConfig.some((c) => {
+      const list = itemsByCat[c.key] || []
+      return !!list[indexByCat[c.key]]
     })
-    if (missing.length) {
+    if (!hasAnySelected) {
       toast({
         variant: 'destructive',
-        title: 'Неполный образ',
-        description: 'Выберите как минимум верх и низ, чтобы завершить образ.',
+        title: 'Пустой образ',
+        description: 'Добавьте хотя бы один предмет, чтобы создать образ.',
       })
       return
     }

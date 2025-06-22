@@ -4,6 +4,7 @@ from sqlalchemy.orm import relationship
 
 from app.core.database import Base
 from app.db.models.associations import user_favorite_items
+from app.db.models.variant import ItemVariant
 
 class Item(Base):
     __tablename__ = "items"
@@ -32,6 +33,9 @@ class Item(Base):
 
     comments = relationship("Comment", back_populates="item", cascade="all, delete-orphan")
     images = relationship("ItemImage", back_populates="item", cascade="all, delete-orphan")
+
+    # Variations / stock keeping units (SKU)
+    variants = relationship("ItemVariant", back_populates="item", cascade="all, delete-orphan")
 
     @property
     def image_urls(self):

@@ -13,6 +13,7 @@ export interface OutfitCreate {
   name: string
   style: string
   description?: string
+  collection?: string
   top_ids?: number[]
   bottom_ids?: number[]
   footwear_ids?: number[]
@@ -40,6 +41,7 @@ export interface ListOutfitsParams {
   limit?: number
   q?: string
   style?: string
+  collection?: string
   min_price?: number
   max_price?: number
   sort_by?: string

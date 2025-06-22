@@ -25,6 +25,7 @@ const emptyOutfit: OutfitCreate = {
   footwear_ids: [],
   accessories_ids: [],
   fragrances_ids: [],
+  collection: '',
 }
 
 const OutfitForm = () => {
@@ -51,6 +52,7 @@ const OutfitForm = () => {
             footwear_ids: data.footwear.map((f) => f.id),
             accessories_ids: data.accessories.map((a) => a.id),
             fragrances_ids: data.fragrances.map((fr) => fr.id),
+            collection: data.collection ?? '',
           })
         }
       } catch (error) {
@@ -172,6 +174,20 @@ const OutfitForm = () => {
                 onChange={handleChange}
                 required
                 placeholder="Стиль образа"
+                className="focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+            </div>
+
+            <div className="space-y-3">
+              <Label htmlFor="collection" className="text-sm font-medium text-muted-foreground">
+                Коллекция
+              </Label>
+              <Input
+                id="collection"
+                name="collection"
+                value={form.collection || ''}
+                onChange={handleChange}
+                placeholder="Напр. Summer 2024"
                 className="focus:border-primary focus:ring-1 focus:ring-primary"
               />
             </div>

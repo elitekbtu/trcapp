@@ -12,7 +12,7 @@ import json
 
 from app.core.database import get_db
 from app.db.models.item import Item
-from app.core.security import require_admin, get_current_user_optional, get_current_user
+from app.core.security import require_admin, get_current_user_optional, get_current_user, is_admin
 from app.db.models.user import User
 from app.db.models.outfit import (
         outfit_top_association,
@@ -21,6 +21,7 @@ from app.db.models.outfit import (
         outfit_accessories_association,
         outfit_fragrances_association,
     )
+from app.db.models.variant import ItemVariant
 
 router = APIRouter(
     prefix="/api/items",
@@ -35,6 +36,7 @@ class ItemCreate(BaseModel):
     description: Optional[str] = None
     price: Optional[float] = None
     category: Optional[str] = None
+    clothing_type: Optional[str] = None  # alias for category for compatibility
     article: Optional[str] = None
     size: Optional[str] = None
     style: Optional[str] = None
@@ -48,10 +50,42 @@ class ItemUpdate(BaseModel):
     description: Optional[str] = None
     price: Optional[float] = None
     category: Optional[str] = None
+    clothing_type: Optional[str] = None
     article: Optional[str] = None
     size: Optional[str] = None
     style: Optional[str] = None
     collection: Optional[str] = None
+
+# -------------------- Variants / Stock --------------------
+
+class VariantBase(BaseModel):
+    size: Optional[str] = None
+    color: Optional[str] = None
+    sku: Optional[str] = None
+    stock: int = 0
+    price: Optional[float] = None  # price override
+
+
+class VariantCreate(VariantBase):
+    pass
+
+
+class VariantUpdate(BaseModel):
+    size: Optional[str] = None
+    color: Optional[str] = None
+    sku: Optional[str] = None
+    stock: Optional[int] = None
+    price: Optional[float] = None
+
+
+class VariantOut(VariantBase):
+    id: int
+
+    class Config:
+        orm_mode = True
+
+
+# -------------------- Item response --------------------
 
 class ItemOut(ItemCreate):
     id: int
@@ -60,6 +94,7 @@ class ItemOut(ItemCreate):
     style: Optional[str] = None
     collection: Optional[str] = None
     image_urls: Optional[List[str]] = None
+    variants: Optional[List[VariantOut]] = None
 
     class Config:
         orm_mode = True
@@ -85,6 +120,7 @@ async def create_item(
     description: Optional[str] = Form(None),
     price: Optional[float] = Form(None),
     category: Optional[str] = Form(None),
+    clothing_type: Optional[str] = Form(None),  # Compatibility with older frontend
     article: Optional[str] = Form(None),
     size: Optional[str] = Form(None),
     style: Optional[str] = Form(None),
@@ -106,6 +142,10 @@ async def create_item(
 
     if not primary_image_url and image_url:
         primary_image_url = image_url
+
+    # If category is not provided but clothing_type is, treat it as category
+    if not category and clothing_type:
+        category = clothing_type
 
     db_item = Item(
         name=name,
@@ -140,6 +180,7 @@ def list_items(
     limit: int = 100,
     q: Optional[str] = Query(None),
     category: Optional[str] = Query(None),
+    clothing_type: Optional[str] = Query(None),  # compatibility
     style: Optional[str] = Query(None),
     collection: Optional[str] = Query(None),
     min_price: Optional[float] = Query(None),
@@ -161,8 +202,9 @@ def list_items(
             )
         )
     
-    if category:
-        query = query.filter(Item.category == category)
+    if category or clothing_type:
+        cat_val = category or clothing_type
+        query = query.filter(Item.category == cat_val)
     
     if style:
         query = query.filter(Item.style == style)
@@ -288,7 +330,11 @@ def update_item(item_id: int, item_in: ItemUpdate, db: Session = Depends(get_db)
     
     update_data = item_in.dict(exclude_unset=True)
     for field, value in update_data.items():
-        setattr(item, field, value)
+        if field == 'clothing_type':
+            # Map to category
+            item.category = value
+        else:
+            setattr(item, field, value)
     
     db.commit()
     db.refresh(item)
@@ -458,3 +504,67 @@ def _remove_upload_file(url: str):
             except OSError:
                 # Логировать можно, но не останавливаем процесс удаления записи
                 pass
+
+# ==================== Variant CRUD ====================
+
+
+# List variants for an item
+@router.get("/{item_id}/variants", response_model=List[VariantOut])
+def list_variants(item_id: int, db: Session = Depends(get_db)):
+    item = db.get(Item, item_id)
+    if not item:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
+    return item.variants
+
+
+# Create variant
+@router.post("/{item_id}/variants", response_model=VariantOut, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_admin)])
+def create_variant(item_id: int, payload: VariantCreate, db: Session = Depends(get_db)):
+    item = db.get(Item, item_id)
+    if not item:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
+
+    # Ensure SKU uniqueness if provided
+    if payload.sku:
+        exists = db.query(ItemVariant).filter(ItemVariant.sku == payload.sku).first()
+        if exists:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="SKU already exists")
+
+    variant = ItemVariant(item_id=item.id, **payload.dict())
+    db.add(variant)
+    db.commit()
+    db.refresh(variant)
+    return variant
+
+
+# Update variant
+@router.put("/{item_id}/variants/{variant_id}", response_model=VariantOut, dependencies=[Depends(require_admin)])
+def update_variant(item_id: int, variant_id: int, payload: VariantUpdate, db: Session = Depends(get_db)):
+    variant = db.get(ItemVariant, variant_id)
+    if not variant or variant.item_id != item_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Variant not found")
+
+    # If sku changes, enforce uniqueness
+    if payload.sku and payload.sku != variant.sku:
+        exists = db.query(ItemVariant).filter(ItemVariant.sku == payload.sku).first()
+        if exists:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="SKU already exists")
+
+    for field, value in payload.dict(exclude_unset=True).items():
+        setattr(variant, field, value)
+
+    db.commit()
+    db.refresh(variant)
+    return variant
+
+
+# Delete variant
+@router.delete("/{item_id}/variants/{variant_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_admin)])
+def delete_variant(item_id: int, variant_id: int, db: Session = Depends(get_db)):
+    variant = db.get(ItemVariant, variant_id)
+    if not variant or variant.item_id != item_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Variant not found")
+
+    db.delete(variant)
+    db.commit()
+    return None

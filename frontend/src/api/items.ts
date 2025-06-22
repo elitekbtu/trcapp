@@ -25,6 +25,7 @@ export interface ItemOut extends ItemBase {
   updated_at?: string
   image_urls?: string[]
   clothing_type?: ClothingType
+  variants?: VariantOut[]
 }
 
 export interface ListItemsParams {
@@ -140,4 +141,39 @@ export const likeItemComment = async (itemId: number, commentId: number) => {
 
 export const deleteItemComment = async (itemId: number, commentId: number) => {
   await api.delete(`/api/items/${itemId}/comments/${commentId}`)
-} 
+}
+
+// ---------- Variants ----------
+
+export const listVariants = async (itemId: number) => {
+  const resp = await api.get<VariantOut[]>(`/api/items/${itemId}/variants`)
+  return resp.data
+}
+
+export const createVariant = async (itemId: number, data: VariantCreate) => {
+  const resp = await api.post<VariantOut>(`/api/items/${itemId}/variants`, data)
+  return resp.data
+}
+
+export const updateVariant = async (itemId: number, variantId: number, data: VariantUpdate) => {
+  const resp = await api.put<VariantOut>(`/api/items/${itemId}/variants/${variantId}`, data)
+  return resp.data
+}
+
+export const deleteVariant = async (itemId: number, variantId: number) => {
+  await api.delete(`/api/items/${itemId}/variants/${variantId}`)
+}
+
+// ---------------- Variants interfaces ----------------
+
+export interface VariantOut {
+  id: number
+  size?: string
+  color?: string
+  sku?: string
+  stock: number
+  price?: number
+}
+
+export type VariantCreate = Omit<VariantOut, 'id'>
+export type VariantUpdate = Partial<Omit<VariantOut, 'id'>> 

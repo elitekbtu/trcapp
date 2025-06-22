@@ -8,6 +8,10 @@ import {
   updateItem,
   type ItemCreate,
   type ItemUpdate,
+  listVariants,
+  createVariant as apiCreateVariant,
+  deleteVariant as apiDeleteVariant,
+  type VariantCreate,
 } from '../../api/items'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
@@ -24,7 +28,7 @@ const emptyItem: ItemCreate = {
   image_url: '',
   description: '',
   price: undefined,
-  category: '',
+  category: 'top',
   article: '',
   size: '',
   style: '',
@@ -41,13 +45,14 @@ const ItemForm = () => {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [files, setFiles] = useState<File[]>([])
+  const [variants, setVariants] = useState<VariantCreate[]>([])
 
   useEffect(() => {
     const fetchItem = async () => {
       try {
         if (isEdit) {
           const data = await getItem(Number(id))
-          setForm({ ...(data as ItemCreate) })
+          setForm({ ...(data as ItemCreate), clothing_type: (data as any).category as any })
         }
       } catch (error) {
         toast({
@@ -63,9 +68,28 @@ const ItemForm = () => {
     fetchItem()
   }, [id, isEdit, toast])
 
+  useEffect(() => {
+    const fetchVariants = async () => {
+      if (!isEdit) return
+      try {
+        const data = await listVariants(Number(id))
+        setVariants(data.map((v) => ({ size: v.size, color: v.color, sku: v.sku, stock: v.stock, price: v.price })))
+      } catch (_) {
+        /* ignore */
+      }
+    }
+    fetchVariants()
+  }, [id, isEdit])
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
-    setForm((prev) => ({ ...prev, [name]: value }))
+    if (name === 'clothing_type') {
+      setForm((prev) => ({ ...prev, clothing_type: value as any, category: value }))
+    } else if (name === 'category') {
+      setForm((prev) => ({ ...prev, category: value, clothing_type: value as any }))
+    } else {
+      setForm((prev) => ({ ...prev, [name]: value }))
+    }
   }
 
   const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -84,9 +108,12 @@ const ItemForm = () => {
     setSubmitting(true)
 
     try {
+      let itemId: number | null = null
+
       if (isEdit) {
         const payload: ItemUpdate = { ...form }
         await updateItem(Number(id), payload)
+        itemId = Number(id)
         toast({
           title: 'Успешно',
           description: 'Товар успешно обновлен',
@@ -101,12 +128,26 @@ const ItemForm = () => {
         files.forEach((file) => {
           formData.append('images', file)
         })
-        await createItem(formData)
+        const created = await createItem(formData)
+        itemId = created.id
         toast({
           title: 'Успешно',
           description: 'Товар успешно создан',
         })
       }
+
+      // Synchronize variants if any exist
+      if (itemId && variants.length > 0) {
+        // For simplicity: delete all existing variants then recreate
+        if (isEdit) {
+          const existing = await listVariants(itemId)
+          await Promise.all(existing.map((v) => apiDeleteVariant(itemId!, v.id)))
+        }
+        for (const v of variants) {
+          await apiCreateVariant(itemId, v)
+        }
+      }
+
       navigate('/admin/items')
     } catch (error) {
       toast({
@@ -186,35 +227,21 @@ const ItemForm = () => {
 
             <div className="space-y-3">
               <Label htmlFor="category" className="text-sm font-medium text-muted-foreground">
-                Категория
-              </Label>
-              <Input
-                id="category"
-                name="category"
-                value={form.category || ''}
-                onChange={handleChange}
-                placeholder="Категория"
-                className="focus:border-primary focus:ring-1 focus:ring-primary"
-              />
-            </div>
-
-            <div className="space-y-3">
-              <Label htmlFor="clothing_type" className="text-sm font-medium text-muted-foreground">
-                Тип одежды (top, bottom...)
+                Категория товара
               </Label>
               <select
-                id="clothing_type"
-                name="clothing_type"
-                value={form.clothing_type}
+                id="category"
+                name="category"
+                value={form.category}
                 onChange={handleChange}
                 required
                 className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary"
               >
-                <option value="top">Верх</option>
-                <option value="bottom">Низ</option>
-                <option value="accessories">Аксессуары</option>
-                <option value="footwear">Обувь</option>
-                <option value="fragrances">Ароматы</option>
+                <option value="top">Верх (top)</option>
+                <option value="bottom">Низ (bottom)</option>
+                <option value="accessories">Аксессуары (accessories)</option>
+                <option value="footwear">Обувь (footwear)</option>
+                <option value="fragrances">Ароматы (fragrances)</option>
               </select>
             </div>
 
@@ -257,6 +284,48 @@ const ItemForm = () => {
                 value={form.color || ''}
                 onChange={handleChange}
                 placeholder="Цвет"
+                className="focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+            </div>
+
+            <div className="space-y-3">
+              <Label htmlFor="article" className="text-sm font-medium text-muted-foreground">
+                Артикул / SKU
+              </Label>
+              <Input
+                id="article"
+                name="article"
+                value={form.article || ''}
+                onChange={handleChange}
+                placeholder="Уникальный артикул товара"
+                className="focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+            </div>
+
+            <div className="space-y-3">
+              <Label htmlFor="style" className="text-sm font-medium text-muted-foreground">
+                Стиль
+              </Label>
+              <Input
+                id="style"
+                name="style"
+                value={form.style || ''}
+                onChange={handleChange}
+                placeholder="Классический, спорт-шик, casual..."
+                className="focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+            </div>
+
+            <div className="space-y-3">
+              <Label htmlFor="collection" className="text-sm font-medium text-muted-foreground">
+                Коллекция
+              </Label>
+              <Input
+                id="collection"
+                name="collection"
+                value={form.collection || ''}
+                onChange={handleChange}
+                placeholder="Напр. Summer 2024"
                 className="focus:border-primary focus:ring-1 focus:ring-primary"
               />
             </div>
@@ -346,6 +415,59 @@ const ItemForm = () => {
               />
             </div>
           </div>
+        </div>
+
+        <div className="rounded-xl border bg-card p-6 shadow-sm">
+          <h2 className="mb-6 text-xl font-semibold text-foreground">Вариации и остатки</h2>
+
+          {variants.length === 0 && (
+            <p className="mb-4 text-sm text-muted-foreground">Вариации ещё не добавлены.</p>
+          )}
+
+          {variants.map((variant, idx) => (
+            <div key={idx} className="mb-6 grid gap-4 md:grid-cols-5">
+              {([
+                { prop: 'size', placeholder: 'Размер' },
+                { prop: 'color', placeholder: 'Цвет' },
+                { prop: 'sku', placeholder: 'SKU' },
+                { prop: 'stock', placeholder: 'Остаток', type: 'number' as const },
+                { prop: 'price', placeholder: 'Цена', type: 'number' as const },
+              ] as const).map((field) => {
+                const inputType = (field as any).type ?? 'text'
+                const isNumberField = (field as any).type === 'number'
+                return (
+                  <Input
+                    key={field.prop}
+                    type={inputType}
+                    placeholder={field.placeholder}
+                    value={(variant as any)[field.prop] ?? ''}
+                    onChange={(e) => {
+                      const value = isNumberField ? Number(e.target.value) : e.target.value
+                      setVariants((prev) => {
+                        const copy = [...prev]
+                        ;(copy[idx] as any)[field.prop] = value === '' ? undefined : value
+                        return copy
+                      })
+                    }}
+                    className="focus:border-primary focus:ring-1 focus:ring-primary"
+                  />
+                )
+              })}
+              {/* Remove btn */}
+              <Button
+                type="button"
+                variant="destructive"
+                size="icon"
+                onClick={() => setVariants((prev) => prev.filter((_, i) => i !== idx))}
+              >
+                ×
+              </Button>
+            </div>
+          ))}
+
+          <Button type="button" onClick={() => setVariants((prev) => [...prev, { stock: 0 }] as VariantCreate[])}>
+            + Добавить вариацию
+          </Button>
         </div>
 
         <div className="flex justify-end gap-3">
