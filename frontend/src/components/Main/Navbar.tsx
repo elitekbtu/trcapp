@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom'
-import { ShoppingBag, User, LogOut, Settings, Heart, ShoppingCart, Clock } from 'lucide-react'
+import { ShoppingBag, User, LogOut, Settings, Heart, Clock } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
-import { useCart } from '../../context/CartContext'
 import { useFavorites } from '../../context/FavoritesContext'
-import { Button } from '../ui/button'
+import { Button } from '../ui/Button'
+import { Cart } from './Cart'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +15,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar'
 
 const MainNavbar = () => {
   const { user, isAdmin } = useAuth()
-  const { totalItems } = useCart()
   const { favoriteIds } = useFavorites()
   
   return (
@@ -50,16 +49,7 @@ const MainNavbar = () => {
             </Button>
           </Link>
           
-          <Link to="/cart">
-            <Button variant="ghost" size="icon" className="relative">
-              <ShoppingCart className="h-5 w-5" />
-              {totalItems > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
-                  {totalItems}
-                </span>
-              )}
-            </Button>
-          </Link>
+          <Cart />
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

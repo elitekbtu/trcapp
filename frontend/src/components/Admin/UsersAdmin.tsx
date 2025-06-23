@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Loader2, PlusCircle, Pencil, Trash2, Shield, UserCheck, UserX } from 'lucide-react'
 import api from '../../api/client'
-import { Button } from '../../components/ui/button'
+import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/badge'
 import { useToast } from '../../components/ui/use-toast'
 
@@ -159,7 +159,7 @@ const UsersAdmin = () => {
                         </Link>
                       </Button>
                       <Button
-                        variant="destructive"
+                        variant="danger"
                         size="sm"
                         onClick={() => handleDelete(user.id)}
                         disabled={deletingId === user.id}

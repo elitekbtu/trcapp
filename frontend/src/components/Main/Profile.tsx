@@ -6,7 +6,7 @@ import { type ProfileOut } from '../../api/schemas'
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card'
 import { Badge } from '../ui/badge'
-import { Button } from '../ui/button'
+import { Button } from '../ui/Button'
 import { useToast } from '../ui/use-toast'
 import { LoadingSpinner } from '../ui/LoadingSpinner'
 

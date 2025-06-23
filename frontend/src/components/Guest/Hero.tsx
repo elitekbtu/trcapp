@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowRight, Sparkles } from 'lucide-react'
-import { Button } from '../ui/button'
+import { Button } from '../ui/Button'
 
 const Hero = () => {
   return (

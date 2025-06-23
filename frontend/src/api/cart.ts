@@ -1,33 +1,72 @@
-import api from './client'
-import { type CartItemOut, type CartStateOut } from './schemas'
+import api from './client';
+import type { 
+  CartResponse, 
+  CartItemCreate, 
+  CartItemUpdate, 
+  CartItemResponse, 
+  CartSummary,
+  CartStateOut 
+} from './schemas';
 
-export const listCartItems = async () => {
-  const resp = await api.get<CartItemOut[]>('/api/cart/')
-  return resp.data
-}
+export const cartApi = {
+  // Получить корзину
+  getCart: async (): Promise<CartResponse> => {
+    const response = await api.get<CartResponse>('/api/cart/');
+    return response.data;
+  },
 
-export const getCartState = async () => {
-  const resp = await api.get<CartStateOut>('/api/cart/state')
-  return resp.data
-}
+  // Добавить товар в корзину
+  addToCart: async (data: CartItemCreate): Promise<CartItemResponse> => {
+    const response = await api.post<CartItemResponse>('/api/cart/add', data);
+    return response.data;
+  },
 
-export const addToCart = async (itemId: number, quantity = 1) => {
-  const resp = await api.post<CartStateOut>(`/api/cart/${itemId}`, null, {
-    params: { qty: quantity },
-  })
-  return resp.data
-}
+  // Обновить товар в корзине
+  updateCartItem: async (itemId: number, data: CartItemUpdate): Promise<CartItemResponse> => {
+    const response = await api.patch<CartItemResponse>(`/api/cart/${itemId}`, data);
+    return response.data;
+  },
 
-export const updateCartItem = async (itemId: number, quantity: number) => {
-  const resp = await api.put<CartStateOut>(`/api/cart/${itemId}`, { quantity })
-  return resp.data
-}
+  // Удалить товар из корзины
+  removeFromCart: async (itemId: number): Promise<void> => {
+    await api.delete(`/api/cart/${itemId}`);
+  },
 
-export const removeCartItem = async (itemId: number) => {
-  await api.delete(`/api/cart/${itemId}`)
-}
+  // Очистить корзину
+  clearCart: async (): Promise<void> => {
+    await api.delete('/api/cart/');
+  },
 
-export const clearCart = async () => {
-  await api.delete('/api/cart/')
-} 
+  // Получить сводку корзины
+  getCartSummary: async (): Promise<CartSummary> => {
+    const response = await api.get<CartSummary>('/api/cart/summary');
+    return response.data;
+  },
+
+  // Deprecated endpoints для совместимости
+  getCartState: async (): Promise<CartStateOut> => {
+    const response = await api.get<CartStateOut>('/api/cart/state');
+    return response.data;
+  },
+
+  addToCartOld: async (variantId: number, quantity: number = 1): Promise<CartStateOut> => {
+    const response = await api.post<CartStateOut>(`/api/cart/add/${variantId}?qty=${quantity}`);
+    return response.data;
+  },
+
+  updateCartItemOld: async (variantId: number, quantity: number): Promise<CartStateOut> => {
+    const response = await api.put<CartStateOut>(`/api/cart/update/${variantId}`, { quantity });
+    return response.data;
+  },
+
+  removeFromCartOld: async (variantId: number): Promise<CartStateOut> => {
+    const response = await api.delete<CartStateOut>(`/api/cart/remove/${variantId}`);
+    return response.data;
+  },
+
+  clearCartOld: async (): Promise<CartStateOut> => {
+    const response = await api.delete<CartStateOut>('/api/cart/clear/all');
+    return response.data;
+  },
+}; 
 

@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { Loader2, Save, Trash2 } from 'lucide-react'
 import { getProfile, updateProfile, deleteProfile } from '../../api/profile'
 import { type ProfileUpdate } from '../../api/schemas'
-import { Button } from '../ui/button'
+import { Button } from '../ui/Button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { Textarea } from '../ui/textarea'
@@ -22,8 +22,8 @@ const emptyProfile: ProfileUpdate = {
   chest: undefined,
   waist: undefined,
   hips: undefined,
-  favorite_colors: '',
-  favorite_brands: '',
+  favorite_colors: [],
+  favorite_brands: [],
 }
 
 const Settings = () => {
@@ -51,12 +51,8 @@ const Settings = () => {
           chest: data.chest,
           waist: data.waist,
           hips: data.hips,
-          favorite_colors: Array.isArray(data.favorite_colors)
-            ? data.favorite_colors.join(', ')
-            : (data.favorite_colors as string) || '',
-          favorite_brands: Array.isArray(data.favorite_brands)
-            ? data.favorite_brands.join(', ')
-            : (data.favorite_brands as string) || '',
+          favorite_colors: data.favorite_colors || [],
+          favorite_brands: data.favorite_brands || [],
         })
       } catch (error) {
         toast({
@@ -362,7 +358,7 @@ const Settings = () => {
         <div className="flex justify-between gap-4">
           <Button
             type="button"
-            variant="destructive"
+            variant="danger"
             onClick={handleDelete}
             disabled={deleting}
             className="flex items-center gap-2"

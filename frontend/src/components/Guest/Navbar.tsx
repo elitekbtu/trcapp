@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Menu, ShoppingBag } from 'lucide-react'
-import { Button } from '../ui/button'
+import { Button } from '../ui/Button'
 import { motion } from 'framer-motion'
 
 const GuestNavbar = () => {

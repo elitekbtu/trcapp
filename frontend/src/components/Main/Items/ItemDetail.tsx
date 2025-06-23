@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { type CommentOut, type VariantOut } from '../../../api/schemas'
 import { listItemComments, addItemComment, likeComment, deleteItemComment } from '../../../api/items'
 import api from '../../../api/client'
-import { Button } from '../../ui/button'
+import { Button } from '../../ui/Button'
 import { Heart, ShoppingBag, ChevronLeft, MessageSquare, Trash2 } from 'lucide-react'
 import RatingStars from '../../common/RatingStars'
 import { useAuth } from '../../../context/AuthContext'
@@ -12,9 +12,10 @@ import { Card, CardContent, CardHeader } from '../../ui/card'
 import { Badge } from '../../ui/badge'
 import { Skeleton } from '../../ui/skeleton'
 import { Textarea } from '../../ui/textarea'
-import { useCart } from '../../../context/CartContext'
+// import { useCart } from '../../../hooks/useCart'
 import { useFavorites } from '../../../context/FavoritesContext'
 import ImageCarousel from '../../common/ImageCarousel'
+import { AddToCartButton } from '../../cart/AddToCartButton'
 
 interface Item {
   id: number
@@ -42,7 +43,7 @@ const ItemDetail = () => {
   const [newComment, setNewComment] = useState('')
   const [rating, setRating] = useState<number | undefined>()
   const { isFavorite, toggleFavorite } = useFavorites()
-  const { addItem } = useCart()
+  // const { addToCart } = useCart()
 
   useEffect(() => {
     const fetchData = async () => {
@@ -284,12 +285,20 @@ const ItemDetail = () => {
           )}
 
           <div className="flex gap-4">
-            <Button size="lg" className="flex-1" onClick={() => {
-              if (!item) return
-              addItem({ id: item.id, name: item.name, price: item.price ?? 0, image_url: item.image_url })
-            }}>
-              Добавить в корзину
-            </Button>
+            {item.variants && item.variants.length > 0 ? (
+              <AddToCartButton
+                variantId={item.variants[0].id}
+                quantity={1}
+                showQuantitySelector={true}
+                size="lg"
+                className="flex-1"
+                disabled={!item.variants[0].stock || item.variants[0].stock <= 0}
+              />
+            ) : (
+              <Button size="lg" className="flex-1" disabled>
+                Товар недоступен
+              </Button>
+            )}
            <Button
               size="lg"
               variant={isFavorite(Number(id)) ? "default" : "outline"}
@@ -484,9 +493,9 @@ const ItemDetail = () => {
                         }}
                       >
                         <Heart
-                          className={`h-4 w-4 ${c.likes > 0 ? 'fill-primary text-primary' : ''}`}
+                          className={`h-4 w-4 ${(c.likes ?? 0) > 0 ? 'fill-primary text-primary' : ''}`}
                         />
-                        <span>{c.likes}</span>
+                                                  <span>{c.likes ?? 0}</span>
                       </Button>
                     </div>
                   </CardContent>

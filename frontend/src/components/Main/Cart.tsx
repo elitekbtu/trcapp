@@ -1,101 +1,110 @@
-import { Link } from 'react-router-dom'
-import { Button } from '../ui/button'
-import { Card, CardContent, CardFooter } from '../ui/card'
-import { Minus, Plus, ShoppingCart, Trash } from 'lucide-react'
-import { useCart } from '../../context/CartContext'
+import React, { useState } from 'react';
+import { ShoppingCart, Package } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { useCart } from '../../hooks/useCart';
+import { Button } from '../ui/Button';
+import { CartDrawer } from '../../features/cart/CartDrawer';
+import { formatPrice } from '../../utils/format';
+import { calculateCartMetrics } from '../../utils/cart';
 
-const Cart = () => {
-  const { items, totalPrice, totalItems, updateQuantity, removeItem, clearCart } = useCart()
+export const Cart: React.FC = () => {
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const { cart, isLoading } = useCart();
 
-  if (items.length === 0) {
-    return (
-      <div className="container mx-auto flex flex-col items-center justify-center gap-4 px-4 py-16 text-muted-foreground">
-        <ShoppingCart className="h-12 w-12" />
-        <p>Ваша корзина пуста</p>
-        <Button asChild>
-          <Link to="/items">Перейти к товарам</Link>
-        </Button>
-      </div>
-    )
-  }
+  const metrics = cart?.items ? calculateCartMetrics(cart.items) : null;
+  const hasItems = cart?.items && cart.items.length > 0;
+  const hasUnavailableItems = cart?.summary?.has_unavailable || false;
+
+  const openDrawer = () => setIsDrawerOpen(true);
+  const closeDrawer = () => setIsDrawerOpen(false);
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="mb-6 font-display text-3xl font-bold tracking-tight">Корзина</h1>
+    <>
+      {/* Cart Button */}
+      <motion.div
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        className="relative"
+      >
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={openDrawer}
+          className={`
+            relative transition-all duration-200
+            ${hasItems ? 'text-blue-600 hover:text-blue-700 hover:bg-blue-50' : ''}
+            ${hasUnavailableItems ? 'text-red-600 hover:text-red-700 hover:bg-red-50' : ''}
+          `}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <Package className="h-5 w-5 animate-pulse" />
+          ) : (
+            <ShoppingCart className="h-5 w-5" />
+          )}
+          
+          {/* Badge */}
+          {hasItems && cart?.summary && (
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className={`
+                absolute -top-1 -right-1 h-5 w-5 rounded-full text-xs font-medium
+                flex items-center justify-center text-white
+                ${hasUnavailableItems ? 'bg-red-500' : 'bg-blue-500'}
+              `}
+            >
+              {(cart.summary.items_count ?? 0) > 99 ? '99+' : (cart.summary.items_count ?? 0)}
+            </motion.div>
+          )}
+        </Button>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Items */}
-        <div className="lg:col-span-2 space-y-4">
-          {items.map((item) => (
-            <Card key={item.id} className="flex flex-col sm:flex-row overflow-hidden">
-              {item.image_url && (
-                <img
-                  src={item.image_url}
-                  alt={item.name}
-                  className="h-40 w-full sm:w-32 object-cover"
-                />
-              )}
-              <CardContent className="flex flex-1 flex-col gap-2 p-4">
-                <h3 className="font-medium">{item.name}</h3>
-                <p className="text-sm text-muted-foreground">{item.price.toLocaleString()} ₸</p>
-                <div className="mt-auto flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    disabled={item.quantity <= 1}
-                    onClick={() => item.quantity > 1 && updateQuantity(item.id, item.quantity - 1)}
-                  >
-                    <Minus className="h-4 w-4" />
-                  </Button>
-                  <span>{item.quantity}</span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    disabled={item.quantity >= 99}
-                    onClick={() => item.quantity < 99 && updateQuantity(item.id, item.quantity + 1)}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
+        {/* Hover Preview */}
+        {hasItems && !isLoading && (
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            whileHover={{ opacity: 1, y: 0, scale: 1 }}
+            className="absolute top-full right-0 mt-2 w-64 bg-white border rounded-lg shadow-lg p-4 z-10 pointer-events-none"
+          >
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">Товаров в корзине:</span>
+                <span className="font-medium">{cart?.summary?.items_count || 0}</span>
+              </div>
+              
+              {metrics && metrics.reservedItems > 0 && (
+                <div className="flex items-center justify-between text-sm text-blue-600">
+                  <span>Зарезервировано:</span>
+                  <span className="font-medium">{metrics.reservedItems}</span>
                 </div>
-              </CardContent>
-              <CardFooter className="flex items-center justify-between p-4 sm:flex-col sm:justify-center sm:gap-2">
-                <p className="font-semibold">
-                  {(item.price * item.quantity).toLocaleString()} ₸
-                </p>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-red-500 hover:text-red-600"
-                  onClick={() => removeItem(item.id)}
-                >
-                  <Trash className="h-4 w-4" />
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
-
-        {/* Summary */}
-        <Card className="h-fit">
-          <CardContent className="p-6 space-y-4">
-            <h2 className="text-xl font-medium">Итого</h2>
-            <div className="flex items-center justify-between text-sm">
-              <span>Товары</span>
-              <span>{totalItems}</span>
+              )}
+              
+              {metrics && metrics.unavailableItems > 0 && (
+                <div className="flex items-center justify-between text-sm text-red-600">
+                  <span>Недоступно:</span>
+                  <span className="font-medium">{metrics.unavailableItems}</span>
+                </div>
+              )}
+              
+              <div className="border-t pt-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">Итого:</span>
+                  <span className="font-bold text-lg">
+                    {cart?.summary ? formatPrice(cart.summary.total) : '0 ₽'}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="text-xs text-gray-500 text-center pt-1">
+                Нажмите для открытия корзины
+              </div>
             </div>
-            <div className="flex items-center justify-between text-lg font-semibold">
-              <span>Сумма</span>
-              <span>{totalPrice.toLocaleString()} ₸</span>
-            </div>
-            <Button className="w-full">Оформить заказ</Button>
-            <Button variant="outline" className="w-full" onClick={clearCart}>
-              Очистить корзину
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  )
-}
+          </motion.div>
+        )}
+      </motion.div>
 
-export default Cart 
+      {/* Cart Drawer */}
+      <CartDrawer isOpen={isDrawerOpen} onClose={closeDrawer} />
+    </>
+  );
+}; 

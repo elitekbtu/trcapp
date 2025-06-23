@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Loader2, ArrowLeft, Save } from 'lucide-react'
-import { getUser, createUser, updateUser } from '../../api/users'
+import { getUser, createUserAdmin, updateUserAdmin } from '../../api/users'
 import { type UserCreateAdmin, type UserUpdateAdmin } from '../../api/schemas'
-import { Button } from '../../components/ui/button'
+import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Switch } from '../../components/ui/switch'
@@ -87,14 +87,14 @@ const UserForm = () => {
           is_admin: form.is_admin,
           is_active: form.is_active,
         }
-        await updateUser(Number(id), payload)
+        await updateUserAdmin(Number(id), payload)
         toast({
           title: 'Успешно',
           description: 'Пользователь успешно обновлен',
           className: 'border-0 bg-green-500 text-white shadow-lg',
         })
       } else {
-        await createUser(form)
+        await createUserAdmin(form)
         toast({
           title: 'Успешно',
           description: 'Пользователь успешно создан',

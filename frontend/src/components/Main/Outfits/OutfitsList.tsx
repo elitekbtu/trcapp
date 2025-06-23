@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import api from '../../../api/client'
-import { Button } from '../../ui/button'
+import { Button } from '../../ui/Button'
 import { Input } from '../../ui/input'
 import { Card, CardContent } from '../../ui/card'
 import { Search, Filter, Sparkles } from 'lucide-react'
@@ -43,7 +43,7 @@ const OutfitsList = () => {
           const det = details.find((d) => d.status === 'fulfilled' && (d as any).value.data.id === p.id) as any
           if (det && det.status === 'fulfilled') {
             const data: OutfitOut = det.value.data
-            const firstItem = data.tops?.[0] || data.bottoms?.[0] || data.footwear?.[0] || data.accessories?.[0]
+            const firstItem = Object.values(data.items).flat()[0] as any
             return { ...p, image_url: firstItem?.image_url || null }
           }
           return p

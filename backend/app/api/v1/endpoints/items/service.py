@@ -55,12 +55,10 @@ async def create_item(
     db: Session,
     name: str,
     brand: Optional[str],
-    color: Optional[str],
     description: Optional[str],
     price: Optional[float],
     category: Optional[str],
     article: Optional[str],
-    size: Optional[str],
     style: Optional[str],
     collection: Optional[str],
     images: Optional[List[UploadFile]],
@@ -82,13 +80,10 @@ async def create_item(
     db_item = Item(
         name=name,
         brand=brand,
-        color=color,
-        image_url=primary_image_url,
         description=description,
-        price=price,
+        base_price=price,
         category=category,
         article=article,
-        size=size,
         style=style,
         collection=collection,
     )
@@ -138,20 +133,21 @@ def list_items(db: Session, filters: dict, skip: int = 0, limit: int = 100, user
     if collection := filters.get("collection"):
         query = query.filter(Item.collection.ilike(f"%{collection}%"))
     if min_price := filters.get("min_price"):
-        query = query.filter(Item.price >= min_price)
+        query = query.filter(Item.base_price >= min_price)
     if max_price := filters.get("max_price"):
-        query = query.filter(Item.price <= max_price)
-    if size := filters.get("size"):
-        query = query.filter(Item.size.ilike(f"%{size}%"))
+        query = query.filter(Item.base_price <= max_price)
+    # Size filtering now handled via variants
+    # if size := filters.get("size"):
+    #     query = query.filter(Item.size.ilike(f"%{size}%"))
     if clothing_type := filters.get("clothing_type"):
         query = query.filter(Item.clothing_type.ilike(f"%{clothing_type}%"))
 
     # Apply sorting
     if sort_by := filters.get("sort_by"):
         if sort_by == "price_asc":
-            query = query.order_by(Item.price.asc())
+            query = query.order_by(Item.base_price.asc())
         elif sort_by == "price_desc":
-            query = query.order_by(Item.price.desc())
+            query = query.order_by(Item.base_price.desc())
         elif sort_by == "newest":
             query = query.order_by(Item.created_at.desc())
 

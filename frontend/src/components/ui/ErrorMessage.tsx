@@ -1,4 +1,4 @@
-import { Button } from "./button" 
+import { Button } from "./Button" 
 import { cn } from "../../lib/utils"
 type ErrorMessageProps = {
   message: string

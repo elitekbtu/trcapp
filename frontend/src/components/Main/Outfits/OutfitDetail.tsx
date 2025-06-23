@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import api from '../../../api/client'
-import { Button } from '../../ui/button'
+import { Button } from '../../ui/Button'
 import { Heart, Sparkles } from 'lucide-react'
 import { Card, CardContent, CardHeader } from '../../ui/card'
 import { Textarea } from '../../ui/textarea'
@@ -340,8 +340,8 @@ const OutfitDetail = () => {
                         }
                       }}
                     >
-                      <Heart className={`h-4 w-4 ${c.likes > 0 ? 'fill-primary text-primary' : ''}`} />
-                      <span>{c.likes}</span>
+                      <Heart className={`h-4 w-4 ${(c.likes ?? 0) > 0 ? 'fill-primary text-primary' : ''}`} />
+                                              <span>{c.likes ?? 0}</span>
                     </Button>
                   </div>
                 </CardContent>

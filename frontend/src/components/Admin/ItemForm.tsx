@@ -11,7 +11,7 @@ import {
   deleteVariant as apiDeleteVariant,
 } from '../../api/items'
 import { type ItemUpdate, type VariantCreate } from '../../api/schemas'
-import { Button } from '../../components/ui/button'
+import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/input'
 import { Textarea } from '../../components/ui/textarea'
 import { Label } from '../../components/ui/label'
@@ -22,14 +22,11 @@ import type { Body_create_item_api_items__post as ItemCreate } from '../../api/s
 const emptyItem: ItemCreate = {
   name: '',
   brand: '',
-  color: '',
-  clothing_type: 'top',
   image_url: '',
   description: '',
   price: undefined,
   category: 'top',
   article: '',
-  size: '',
   style: '',
   collection: '',
 }
@@ -51,7 +48,7 @@ const ItemForm = () => {
       try {
         if (isEdit) {
           const data = await getItem(Number(id))
-          setForm({ ...(data as ItemCreate), clothing_type: (data as any).category as any })
+          setForm({ ...(data as ItemCreate) })
         }
       } catch (error) {
         toast({
@@ -82,13 +79,7 @@ const ItemForm = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
-    if (name === 'clothing_type') {
-      setForm((prev) => ({ ...prev, clothing_type: value as any, category: value }))
-    } else if (name === 'category') {
-      setForm((prev) => ({ ...prev, category: value, clothing_type: value as any }))
-    } else {
-      setForm((prev: ItemCreate) => ({ ...prev, [name]: value }))
-    }
+    setForm((prev: ItemCreate) => ({ ...prev, [name]: value }))
   }
 
   const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -270,33 +261,7 @@ const ItemForm = () => {
               />
             </div>
 
-            <div className="space-y-3">
-              <Label htmlFor="size" className="text-sm font-medium text-muted-foreground">
-                Размер
-              </Label>
-              <Input
-                id="size"
-                name="size"
-                value={form.size || ''}
-                onChange={handleChange}
-                placeholder="Размер"
-                className="focus:border-primary focus:ring-1 focus:ring-primary"
-              />
-            </div>
 
-            <div className="space-y-3">
-              <Label htmlFor="color" className="text-sm font-medium text-muted-foreground">
-                Цвет
-              </Label>
-              <Input
-                id="color"
-                name="color"
-                value={form.color || ''}
-                onChange={handleChange}
-                placeholder="Цвет"
-                className="focus:border-primary focus:ring-1 focus:ring-primary"
-              />
-            </div>
 
             <div className="space-y-3">
               <Label htmlFor="article" className="text-sm font-medium text-muted-foreground">
@@ -466,7 +431,7 @@ const ItemForm = () => {
               {/* Remove btn */}
               <Button
                 type="button"
-                variant="destructive"
+                variant="danger"
                 size="icon"
                 onClick={() => setVariants((prev) => prev.filter((_, i) => i !== idx))}
               >

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { ArrowLeft, ArrowRight, X } from 'lucide-react'
 import { listItems } from '../../../api/items'
 import { type ItemOut } from '../../../api/schemas'
-import { Button } from '../../ui/button'
+import { Button } from '../../ui/Button'
 import { useTranslation } from 'react-i18next'
 
 // Mapping for UI labels and API clothing types

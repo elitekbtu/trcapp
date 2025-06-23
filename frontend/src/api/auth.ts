@@ -1,9 +1,15 @@
 import api, { setStoredTokens, clearStoredTokens } from './client'
-import { type TokensUserOut } from './schemas'
+import { 
+  type TokensUserOut, 
+  type UserCreate, 
+  type RefreshTokenIn,
+  type TokensOut 
+} from './schemas'
 
 export const registerApi = async (email: string, password: string) => {
   try {
-    const resp = await api.post<TokensUserOut>('/api/auth/register', { email, password })
+    const userData: UserCreate = { email, password }
+    const resp = await api.post<TokensUserOut>('/api/auth/register', userData)
     setStoredTokens(resp.data.access_token, resp.data.refresh_token)
     return resp.data
   } catch (error: any) {
@@ -40,9 +46,22 @@ export const loginApi = async (email: string, password: string) => {
   }
 }
 
+export const refreshTokenApi = async (refreshToken: string): Promise<TokensOut> => {
+  try {
+    const data: RefreshTokenIn = { refresh_token: refreshToken }
+    const resp = await api.post<TokensOut>('/api/auth/refresh', data)
+    setStoredTokens(resp.data.access_token, resp.data.refresh_token)
+    return resp.data
+  } catch (error: any) {
+    clearStoredTokens()
+    throw new Error('Ошибка при обновлении токена')
+  }
+}
+
 export const logoutApi = async (refreshToken?: string) => {
   try {
-    await api.post('/api/auth/logout', { body: { refresh_token: refreshToken } })
+    const logoutData = { body: { refresh_token: refreshToken } }
+    await api.post('/api/auth/logout', logoutData)
   } catch (err) {
     // ignore
   }

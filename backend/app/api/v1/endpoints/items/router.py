@@ -15,12 +15,10 @@ router = APIRouter(prefix="/items", tags=["Items"])
 async def create_item(
     name: str = Form(...),
     brand: Optional[str] = Form(None),
-    color: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
     price: Optional[float] = Form(None),
     category: Optional[str] = Form(None),
     article: Optional[str] = Form(None),
-    size: Optional[str] = Form(None),
     style: Optional[str] = Form(None),
     collection: Optional[str] = Form(None),
     images: Optional[List[UploadFile]] = File(None),
@@ -28,7 +26,7 @@ async def create_item(
     db: Session = Depends(get_db),
 ):
     return await service.create_item(
-        db, name, brand, color, description, price, category, article, size, style, collection, images, image_url
+        db, name, brand, description, price, category, article, style, collection, images, image_url
     )
 
 

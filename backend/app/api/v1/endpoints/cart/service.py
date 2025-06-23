@@ -1,127 +1,276 @@
 from typing import List, Optional
+from datetime import datetime, timedelta
+from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import and_
 
-from fastapi import HTTPException, status
-from sqlalchemy.orm import Session
-from sqlalchemy.orm import joinedload
-
-from app.db.models.user import User
-from app.db.models.item import Item
-from app.db.models.variant import ItemVariant
-from app.db.models.cart import CartItem
-from .schemas import QuantityUpdate, CartStateOut, CartItemOut
+from app.db.models import CartItem, ItemVariant, Item, User
+from app.api.v1.endpoints.cart.schemas import CartItemCreate, CartItemUpdate
+from app.core.exceptions import NotFoundException, ValidationException
 
 
-def _cart_state(db: Session, user_id: int) -> CartStateOut:
-    """Internal helper to compute cart items and aggregates for given user."""
-    cart_items = (
-        db.query(CartItem)
-        .filter(CartItem.user_id == user_id)
-        .options(
+class CartService:
+    """Сервис для работы с корзиной покупок."""
+    
+    RESERVATION_DURATION_MINUTES = 30  # Время резервирования в минутах
+    
+    @staticmethod
+    def get_cart_items(db: Session, user_id: int) -> List[CartItem]:
+        """Получить все товары в корзине пользователя."""
+        # Очистка истекших резервирований
+        CartService._clean_expired_reservations(db, user_id)
+        
+        return db.query(CartItem).filter(
+            CartItem.user_id == user_id
+        ).options(
             joinedload(CartItem.variant).joinedload(ItemVariant.item)
-        )
-        .all()
-    )
-
-    items_out = []
-    total_items = 0
-    total_price = 0.0
-
-    for ci in cart_items:
-        item = ci.variant.item
-        variant_price = ci.variant.price if ci.variant.price is not None else item.price
+        ).all()
+    
+    @staticmethod
+    def add_to_cart(
+        db: Session, 
+        user_id: int, 
+        item_data: CartItemCreate
+    ) -> CartItem:
+        """Добавить товар в корзину с проверкой доступности."""
+        # Проверка существования варианта
+        variant = db.query(ItemVariant).filter(
+            ItemVariant.id == item_data.variant_id
+        ).first()
         
-        items_out.append(
-            CartItemOut(
-                item_id=item.id,
-                variant_id=ci.variant_id,
-                name=item.name,
-                brand=item.brand,
-                image_url=item.image_url,
-                size=ci.variant.size,
-                color=ci.variant.color,
-                sku=ci.variant.sku,
-                quantity=ci.quantity,
-                price=variant_price,
+        if not variant:
+            raise NotFoundException("Вариант товара не найден")
+        
+        if not variant.is_active:
+            raise ValidationException("Вариант товара недоступен")
+        
+        # Проверка доступного количества
+        if variant.available_stock < item_data.quantity:
+            raise ValidationException(
+                f"Недостаточное количество товара. Доступно: {variant.available_stock}"
             )
+        
+        # Проверка существующего товара в корзине
+        existing_item = db.query(CartItem).filter(
+            and_(
+                CartItem.user_id == user_id,
+                CartItem.variant_id == item_data.variant_id
+            )
+        ).first()
+        
+        if existing_item:
+            # Обновляем количество
+            new_quantity = existing_item.quantity + item_data.quantity
+            
+            if variant.available_stock < new_quantity:
+                raise ValidationException(
+                    f"Недостаточное количество товара. Доступно: {variant.available_stock}"
+                )
+            
+            existing_item.quantity = new_quantity
+            existing_item.price_at_time = variant.actual_price
+            existing_item.updated_at = datetime.utcnow()
+            
+            # Резервирование
+            CartService._reserve_stock(db, variant, item_data.quantity)
+            
+            db.commit()
+            db.refresh(existing_item)
+            
+            # Загружаем связанные объекты
+            existing_item = db.query(CartItem).filter(
+                CartItem.id == existing_item.id
+            ).options(
+                joinedload(CartItem.variant).joinedload(ItemVariant.item)
+            ).first()
+            
+            return existing_item
+        
+        # Создание нового элемента корзины
+        cart_item = CartItem(
+            user_id=user_id,
+            variant_id=item_data.variant_id,
+            quantity=item_data.quantity,
+            price_at_time=variant.actual_price,
+            is_reserved=1,
+            reserved_until=datetime.utcnow() + timedelta(minutes=CartService.RESERVATION_DURATION_MINUTES),
+            notes=item_data.notes
         )
-        total_items += ci.quantity
-        total_price += ci.quantity * (variant_price or 0)
-
-    return CartStateOut(
-        items=items_out,
-        total_items=total_items,
-        total_price=total_price,
-    )
-
-
-def get_cart_state(db: Session, user: User) -> CartStateOut:
-    return _cart_state(db, user.id)
-
-
-def add_to_cart(db: Session, user: User, variant_id: int, qty: int = 1):
-    if qty <= 0:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Quantity must be > 0")
-
-    variant = db.get(ItemVariant, variant_id)
-    if not variant:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item variant not found")
-
-    cart_item = (
-        db.query(CartItem)
-        .filter(CartItem.user_id == user.id, CartItem.variant_id == variant_id)
-        .first()
-    )
-
-    current_qty_in_cart = cart_item.quantity if cart_item else 0
-    
-    if (qty + current_qty_in_cart) > variant.stock:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Not enough stock for variant. Available: {variant.stock}")
-
-    if cart_item:
-        cart_item.quantity += qty
-    else:
-        cart_item = CartItem(user_id=user.id, variant_id=variant_id, quantity=qty)
+        
+        # Резервирование
+        CartService._reserve_stock(db, variant, item_data.quantity)
+        
         db.add(cart_item)
+        db.commit()
+        db.refresh(cart_item)
         
-    db.commit()
-    return _cart_state(db, user.id)
-
-
-def update_cart_item(db: Session, user: User, variant_id: int, payload: QuantityUpdate):
-    cart_item = (
-        db.query(CartItem)
-        .filter(CartItem.user_id == user.id, CartItem.variant_id == variant_id)
-        .first()
-    )
-    if not cart_item:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not in cart")
-
-    if payload.quantity <= 0:
-        db.delete(cart_item)
-    else:
-        if payload.quantity > cart_item.variant.stock:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Not enough stock. Available: {cart_item.variant.stock}")
-        cart_item.quantity = payload.quantity
+        # Загружаем связанные объекты
+        cart_item = db.query(CartItem).filter(
+            CartItem.id == cart_item.id
+        ).options(
+            joinedload(CartItem.variant).joinedload(ItemVariant.item)
+        ).first()
         
-    db.commit()
-    return _cart_state(db, user.id)
-
-
-def remove_cart_item(db: Session, user: User, variant_id: int):
-    cart_item = (
-        db.query(CartItem)
-        .filter(CartItem.user_id == user.id, CartItem.variant_id == variant_id)
-        .first()
-    )
-    if not cart_item:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not in cart")
+        return cart_item
     
-    db.delete(cart_item)
-    db.commit()
-    return _cart_state(db, user.id)
-
-
-def clear_cart(db: Session, user: User):
-    db.query(CartItem).filter(CartItem.user_id == user.id).delete()
-    db.commit()
-    return _cart_state(db, user.id) 
+    @staticmethod
+    def update_cart_item(
+        db: Session,
+        user_id: int,
+        cart_item_id: int,
+        update_data: CartItemUpdate
+    ) -> CartItem:
+        """Обновить количество товара в корзине."""
+        cart_item = db.query(CartItem).filter(
+            and_(
+                CartItem.id == cart_item_id,
+                CartItem.user_id == user_id
+            )
+        ).first()
+        
+        if not cart_item:
+            raise NotFoundException("Товар не найден в корзине")
+        
+        if update_data.quantity is not None:
+            variant = cart_item.variant
+            
+            # Проверка доступности нового количества
+            current_reserved = cart_item.quantity if cart_item.is_reserved else 0
+            new_reserved = update_data.quantity - current_reserved
+            
+            if variant.available_stock < new_reserved:
+                raise ValidationException(
+                    f"Недостаточное количество товара. Доступно: {variant.available_stock + current_reserved}"
+                )
+            
+            # Обновление резервирования
+            if new_reserved > 0:
+                CartService._reserve_stock(db, variant, new_reserved)
+            elif new_reserved < 0:
+                CartService._release_stock(db, variant, abs(new_reserved))
+            
+            cart_item.quantity = update_data.quantity
+            cart_item.updated_at = datetime.utcnow()
+            
+            # Продление резервирования
+            if cart_item.is_reserved:
+                cart_item.reserved_until = datetime.utcnow() + timedelta(
+                    minutes=CartService.RESERVATION_DURATION_MINUTES
+                )
+        
+        if update_data.notes is not None:
+            cart_item.notes = update_data.notes
+        
+        db.commit()
+        db.refresh(cart_item)
+        
+        # Загружаем связанные объекты
+        cart_item = db.query(CartItem).filter(
+            CartItem.id == cart_item.id
+        ).options(
+            joinedload(CartItem.variant).joinedload(ItemVariant.item)
+        ).first()
+        
+        return cart_item
+    
+    @staticmethod
+    def remove_from_cart(db: Session, user_id: int, cart_item_id: int) -> bool:
+        """Удалить товар из корзины."""
+        cart_item = db.query(CartItem).filter(
+            and_(
+                CartItem.id == cart_item_id,
+                CartItem.user_id == user_id
+            )
+        ).first()
+        
+        if not cart_item:
+            raise NotFoundException("Товар не найден в корзине")
+        
+        # Освобождение резервирования
+        if cart_item.is_reserved and cart_item.variant:
+            CartService._release_stock(db, cart_item.variant, cart_item.quantity)
+        
+        db.delete(cart_item)
+        db.commit()
+        
+        return True
+    
+    @staticmethod
+    def clear_cart(db: Session, user_id: int) -> bool:
+        """Очистить корзину пользователя."""
+        cart_items = db.query(CartItem).filter(
+            CartItem.user_id == user_id
+        ).all()
+        
+        # Освобождение всех резервирований
+        for item in cart_items:
+            if item.is_reserved and item.variant:
+                CartService._release_stock(db, item.variant, item.quantity)
+        
+        db.query(CartItem).filter(
+            CartItem.user_id == user_id
+        ).delete()
+        
+        db.commit()
+        
+        return True
+    
+    @staticmethod
+    def get_cart_summary(db: Session, user_id: int) -> dict:
+        """Получить сводку по корзине."""
+        cart_items = CartService.get_cart_items(db, user_id)
+        
+        total = 0.0
+        total_items = 0
+        unavailable_items = []
+        
+        for item in cart_items:
+            if item.is_available:
+                total += item.subtotal
+                total_items += item.quantity
+            else:
+                unavailable_items.append({
+                    "id": item.id,
+                    "variant_id": item.variant_id,
+                    "requested": item.quantity,
+                    "available": item.variant.available_stock if item.variant else 0
+                })
+        
+        return {
+            "total": total,
+            "total_items": total_items,
+            "items_count": len(cart_items),
+            "unavailable_items": unavailable_items,
+            "has_unavailable": len(unavailable_items) > 0
+        }
+    
+    @staticmethod
+    def _reserve_stock(db: Session, variant: ItemVariant, quantity: int):
+        """Зарезервировать товар."""
+        variant.reserved_stock += quantity
+        db.add(variant)
+    
+    @staticmethod
+    def _release_stock(db: Session, variant: ItemVariant, quantity: int):
+        """Освободить зарезервированный товар."""
+        variant.reserved_stock = max(0, variant.reserved_stock - quantity)
+        db.add(variant)
+    
+    @staticmethod
+    def _clean_expired_reservations(db: Session, user_id: int):
+        """Очистить истекшие резервирования."""
+        expired_items = db.query(CartItem).filter(
+            and_(
+                CartItem.user_id == user_id,
+                CartItem.is_reserved == 1,
+                CartItem.reserved_until < datetime.utcnow()
+            )
+        ).all()
+        
+        for item in expired_items:
+            if item.variant:
+                CartService._release_stock(db, item.variant, item.quantity)
+            item.is_reserved = 0
+            item.reserved_until = None
+        
+        if expired_items:
+            db.commit() 

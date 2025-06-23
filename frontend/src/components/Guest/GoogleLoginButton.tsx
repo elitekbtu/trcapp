@@ -1,6 +1,6 @@
 import type { MouseEvent } from 'react'
 import api from '../../api/client'
-import { Button } from '../ui/button'
+import { Button } from '../ui/Button'
 
 const GoogleLoginButton = () => {
   const handleGoogleLogin = async (e: MouseEvent<HTMLButtonElement>) => {

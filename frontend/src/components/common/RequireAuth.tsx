@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { Loader2, LogIn, AlertCircle } from 'lucide-react'
-import { Button } from '../ui/button'
+import { Button } from '../ui/Button'
 import { useToast } from '../ui/use-toast'
 
 const RequireAuth: React.FC<{ children: JSX.Element }> = ({ children }) => {

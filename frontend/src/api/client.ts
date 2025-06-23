@@ -80,7 +80,7 @@ api.interceptors.response.use(
       originalRequest._retry = true
       isRefreshing = true
       try {
-        const resp = await axios.post<{ access_token: string; refresh_token: string; token_type: string }>(
+        const resp = await axios.post<{ access_token: string; refresh_token: string; token_type?: string }>(
           `${baseURL}/api/auth/refresh`,
           {
             refresh_token: refresh,
@@ -94,6 +94,10 @@ api.interceptors.response.use(
       } catch (err) {
         processQueue(err, undefined)
         clearStoredTokens()
+        // Перенаправляем на страницу входа при неудачном обновлении токена
+        if (typeof window !== 'undefined') {
+          window.location.href = '/login'
+        }
         return Promise.reject(err)
       } finally {
         isRefreshing = false

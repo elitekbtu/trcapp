@@ -7,46 +7,50 @@ import {
   type UserUpdateAdmin,
 } from './schemas'
 
-export const listUsers = async () => {
+// ---------- Users Management ----------
+
+export const listUsers = async (): Promise<User[]> => {
   const resp = await api.get<User[]>('/api/users/')
   return resp.data
 }
 
-export const createUser = async (data: UserCreateAdmin) => {
+export const getUser = async (userId: number): Promise<User> => {
+  const resp = await api.get<User>(`/api/users/${userId}`)
+  return resp.data
+}
+
+export const createUserAdmin = async (data: UserCreateAdmin): Promise<User> => {
   const resp = await api.post<User>('/api/users/', data)
   return resp.data
 }
 
-export const getUser = async (id: number) => {
-  const resp = await api.get<User>(`/api/users/${id}`)
+export const updateUserAdmin = async (userId: number, data: UserUpdateAdmin): Promise<User> => {
+  const resp = await api.patch<User>(`/api/users/${userId}`, data)
   return resp.data
 }
 
-export const updateUser = async (id: number, data: UserUpdateAdmin) => {
-  const resp = await api.patch<User>(`/api/users/${id}`, data)
-  return resp.data
+export const deleteUser = async (userId: number): Promise<void> => {
+  await api.delete(`/api/users/${userId}`)
 }
 
-export const deleteUser = async (id: number) => {
-  await api.delete(`/api/users/${id}`)
-}
+// ---------- User Content ----------
 
-// User-specific content
 export const listUserOutfits = async (userId: number) => {
   const resp = await api.get<OutfitOut[]>(`/api/users/${userId}/outfits`)
   return resp.data
 }
 
 export const toggleFavorite = async (userId: number, itemId: number) => {
-  await api.post(`/api/users/${userId}/favorites/${itemId}`)
+  const resp = await api.post(`/api/users/${userId}/favorites/${itemId}`)
+  return resp.data
 }
 
-export const listFavorites = async (userId: number) => {
+export const listFavorites = async (userId: number): Promise<ItemOut[]> => {
   const resp = await api.get<ItemOut[]>(`/api/users/${userId}/favorites`)
   return resp.data
 }
 
-export const userHistory = async (userId: number, limit?: number) => {
+export const getUserHistory = async (userId: number, limit: number = 50): Promise<ItemOut[]> => {
   const resp = await api.get<ItemOut[]>(`/api/users/${userId}/history`, { params: { limit } })
   return resp.data
 } 

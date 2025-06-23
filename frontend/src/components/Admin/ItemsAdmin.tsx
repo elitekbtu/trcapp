@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Loader2, PlusCircle, Pencil, Trash2 } from 'lucide-react'
 import api from '../../api/client'
-import { Button } from '../../components/ui/button'
+import { Button } from '../../components/ui/Button'
 import { useToast } from '../../components/ui/use-toast'
 
 interface Item {
@@ -127,7 +127,7 @@ const ItemsAdmin = () => {
                         </Link>
                       </Button>
                       <Button
-                        variant="destructive"
+                        variant="danger"
                         size="sm"
                         onClick={() => handleDelete(item.id)}
                         disabled={deletingId === item.id}
