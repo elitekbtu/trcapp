@@ -30,3 +30,4 @@ export const removeCartItem = async (itemId: number) => {
 export const clearCart = async () => {
   await api.delete('/api/cart/')
 } 
+
