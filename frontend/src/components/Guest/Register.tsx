@@ -20,6 +20,17 @@ const Register = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    // Client-side validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      setError('Некорректный email')
+      return
+    }
+    if (password.length < 8) {
+      setError('Пароль должен содержать минимум 8 символов')
+      return
+    }
+
     setIsLoading(true)
 
     try {

@@ -65,6 +65,18 @@ const UserForm = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Client-side validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(form.email)) {
+      toast({ variant: 'destructive', title: 'Ошибка', description: 'Некорректный email' })
+      return
+    }
+    if (!isEdit && form.password.length < 8) {
+      toast({ variant: 'destructive', title: 'Ошибка', description: 'Пароль должен содержать минимум 8 символов' })
+      return
+    }
+
     setSubmitting(true)
 
     try {

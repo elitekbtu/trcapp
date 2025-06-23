@@ -1,5 +1,5 @@
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, conint, confloat
 from datetime import datetime
 
 
@@ -9,7 +9,7 @@ class ItemCreate(BaseModel):
     color: Optional[str] = None
     image_url: Optional[str] = None
     description: Optional[str] = None
-    price: Optional[float] = None
+    price: Optional[confloat(gt=0)] = None
     category: Optional[str] = None
     clothing_type: Optional[str] = None
     article: Optional[str] = None
@@ -24,7 +24,7 @@ class ItemUpdate(BaseModel):
     color: Optional[str] = None
     image_url: Optional[str] = None
     description: Optional[str] = None
-    price: Optional[float] = None
+    price: Optional[confloat(gt=0)] = None
     category: Optional[str] = None
     clothing_type: Optional[str] = None
     article: Optional[str] = None
@@ -37,8 +37,8 @@ class VariantBase(BaseModel):
     size: Optional[str] = None
     color: Optional[str] = None
     sku: Optional[str] = None
-    stock: int = 0
-    price: Optional[float] = None
+    stock: conint(ge=0) = 0
+    price: Optional[confloat(gt=0)] = None
 
 
 class VariantCreate(VariantBase):
@@ -49,8 +49,8 @@ class VariantUpdate(BaseModel):
     size: Optional[str] = None
     color: Optional[str] = None
     sku: Optional[str] = None
-    stock: Optional[int] = None
-    price: Optional[float] = None
+    stock: Optional[conint(ge=0)] = None
+    price: Optional[confloat(gt=0)] = None
 
 
 class VariantOut(VariantBase):
@@ -76,7 +76,7 @@ class ItemOut(ItemCreate):
 
 class CommentCreate(BaseModel):
     content: str
-    rating: Optional[int] = None  # 1-5
+    rating: Optional[conint(ge=1, le=5)] = None  # 1-5
 
 
 class CommentOut(CommentCreate):

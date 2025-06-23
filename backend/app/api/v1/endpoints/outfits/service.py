@@ -13,26 +13,28 @@ from app.db.models.comment import Comment
 from .schemas import OutfitCreate, OutfitUpdate, OutfitOut, OutfitCommentCreate, OutfitCommentOut, OutfitItemBase
 
 CATEGORY_MAP = {
-    # payload_field: (expected_item_category_in_db, item_category_for_outfit_item)
-    "top_ids": ("Tops", "top"),
-    "bottom_ids": ("Bottoms", "bottom"),
-    "footwear_ids": ("Footwear", "footwear"),
-    "accessories_ids": ("Accessories", "accessory"),
-    "fragrances_ids": ("Fragrances", "fragrance"),
+    # payload_field: (set_of_acceptable_item_categories, item_category_for_outfit_item)
+    "top_ids": ({"top", "tops", "Top", "Tops"}, "top"),
+    "bottom_ids": ({"bottom", "bottoms", "Bottom", "Bottoms"}, "bottom"),
+    "footwear_ids": ({"footwear", "Footwear"}, "footwear"),
+    "accessories_ids": ({"accessories", "Accessories", "accessory"}, "accessory"),
+    "fragrances_ids": ({"fragrances", "Fragrances", "fragrance"}, "fragrance"),
 }
 
 
-def _fetch_items_by_category(db: Session, ids: List[int], expected_category: str) -> List[Item]:
+def _fetch_items_by_category(db: Session, ids: List[int], acceptable_categories: set[str]) -> List[Item]:
     if not ids:
         return []
+    # Normalize categories to lower for comparison
+    normalized = {c.lower() for c in acceptable_categories}
     items = db.query(Item).filter(Item.id.in_(ids)).all()
     if len(items) != len(ids):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="One or more items not found")
     for item in items:
-        if item.category != expected_category:
+        if (item.category or "").lower() not in normalized:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Item {item.id} is not in category '{expected_category}'",
+                detail=f"Item {item.id} is not in expected category",
             )
     return items
 
@@ -79,7 +81,7 @@ def _price_in_range(price: Optional[float], min_price: Optional[float], max_pric
 
 def _comment_with_likes(comment: Comment):
     out_comment = OutfitCommentOut.from_orm(comment)
-    out_comment.likes = len(comment.likes)
+    out_comment.likes = comment.liked_by.count()
     return out_comment
 
 
@@ -94,11 +96,11 @@ def create_outfit(db: Session, user: User, outfit_in: OutfitCreate):
 
     all_items_for_collection_check = []
 
-    for payload_field, (expected_category, item_cat) in CATEGORY_MAP.items():
+    for payload_field, (acceptable_set, item_cat) in CATEGORY_MAP.items():
         ids = getattr(outfit_in, payload_field)
         if not ids:
             continue
-        items = _fetch_items_by_category(db, ids, expected_category)
+        items = _fetch_items_by_category(db, ids, acceptable_set)
         all_items_for_collection_check.extend(items)
         for item in items:
             outfit_item = OutfitItem(item_category=item_cat, item=item)
@@ -217,7 +219,7 @@ def update_outfit(db: Session, user: User, outfit_id: int, outfit_in: OutfitUpda
             setattr(outfit, field, update_data[field])
 
     items_were_updated = False
-    for payload_field, (expected_category, item_cat) in CATEGORY_MAP.items():
+    for payload_field, (acceptable_set, item_cat) in CATEGORY_MAP.items():
         if payload_field in update_data:
             items_were_updated = True
             # This category is being updated. Remove existing items of this category.
@@ -226,7 +228,7 @@ def update_outfit(db: Session, user: User, outfit_id: int, outfit_in: OutfitUpda
             # Add new items for this category
             ids = update_data[payload_field]
             if ids:
-                items = _fetch_items_by_category(db, ids, expected_category)
+                items = _fetch_items_by_category(db, ids, acceptable_set)
                 for item in items:
                     outfit.outfit_items.append(OutfitItem(item_category=item_cat, item=item))
 
@@ -305,11 +307,13 @@ def like_outfit_comment(db: Session, user: User, comment_id: int):
     if not comment:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found")
     
-    if user in comment.likes:
-        comment.likes.remove(user)
+    like_exists = comment.liked_by.filter_by(id=user.id).first()
+
+    if like_exists:
+        comment.liked_by.remove(like_exists)
         message = "Comment unliked"
     else:
-        comment.likes.append(user)
+        comment.liked_by.append(user)
         message = "Comment liked"
     
     db.commit()

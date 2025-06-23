@@ -104,6 +104,17 @@ const ItemForm = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Client-side validation
+    if (!form.name.trim()) {
+      toast({ variant: 'destructive', title: 'Ошибка', description: 'Название товара обязательно' })
+      return
+    }
+    if (form.price !== undefined && form.price <= 0) {
+      toast({ variant: 'destructive', title: 'Ошибка', description: 'Цена должна быть положительным числом' })
+      return
+    }
+
     setSubmitting(true)
 
     try {

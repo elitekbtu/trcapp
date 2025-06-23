@@ -1,5 +1,5 @@
 from typing import List, Optional
-from pydantic import BaseModel, root_validator
+from pydantic import BaseModel, root_validator, conint
 from datetime import datetime
 
 
@@ -67,7 +67,7 @@ class OutfitOut(BaseModel):
 
 class OutfitCommentCreate(BaseModel):
     content: str
-    rating: Optional[int] = None
+    rating: Optional[conint(ge=1, le=5)] = None
 
 
 class OutfitCommentOut(OutfitCommentCreate):

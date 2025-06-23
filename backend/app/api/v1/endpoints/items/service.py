@@ -47,7 +47,7 @@ def _comment_with_likes(comment: Comment):
     # Helper to include likes count in response
     from .schemas import CommentOut
     out_comment = CommentOut.from_orm(comment)
-    out_comment.likes = len(comment.likes)
+    out_comment.likes = comment.liked_by.count()
     return out_comment
 
 
@@ -315,11 +315,14 @@ def like_comment(db: Session, user: User, comment_id: int):
     if not comment:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found")
     
-    if user in comment.likes:
-        comment.likes.remove(user)
+    # Check if the user has already liked the comment
+    like_exists = comment.liked_by.filter_by(id=user.id).first()
+
+    if like_exists:
+        comment.liked_by.remove(like_exists)
         message = "Comment unliked"
     else:
-        comment.likes.append(user)
+        comment.liked_by.append(user)
         message = "Comment liked"
     
     db.commit()

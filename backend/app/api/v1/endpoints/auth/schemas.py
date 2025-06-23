@@ -1,10 +1,10 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, constr
 from app.api.v1.endpoints.profile.schemas import ProfileOut
 
 
 class UserCreate(BaseModel):
-    email: str
-    password: str
+    email: EmailStr
+    password: constr(min_length=8)
 
 
 class TokenOut(BaseModel):

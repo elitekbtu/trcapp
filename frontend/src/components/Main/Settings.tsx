@@ -79,11 +79,52 @@ const Settings = () => {
 
   const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
-    setForm((prev: ProfileUpdate) => ({ ...prev, [name as keyof ProfileUpdate]: value === '' ? undefined : Number(value) }))
+    const num = value === '' ? undefined : Number(value)
+    if (num !== undefined && num < 0) return // игнорируем отрицательные значения
+    setForm((prev: ProfileUpdate) => ({ ...prev, [name as keyof ProfileUpdate]: num }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Client-side validation
+    // 1. Телефон (опционально) — формат +77071234567, 7-15 цифр
+    if (form.phone_number) {
+      const phoneRegex = /^\+?[0-9]{7,15}$/
+      if (!phoneRegex.test(form.phone_number)) {
+        toast({ variant: 'destructive', title: 'Ошибка', description: 'Некорректный телефонный номер' })
+        return
+      }
+    }
+
+    // 2. Дата рождения — не в будущем
+    if (form.date_of_birth) {
+      const selected = new Date(form.date_of_birth)
+      const today = new Date()
+      // Обрезаем время у today
+      today.setHours(0,0,0,0)
+      if (selected > today) {
+        toast({ variant: 'destructive', title: 'Ошибка', description: 'Дата рождения не может быть в будущем' })
+        return
+      }
+    }
+
+    // 3. Положительные числовые значения
+    const numericFields: (keyof ProfileUpdate)[] = ['height', 'weight', 'chest', 'waist', 'hips']
+    for (const field of numericFields) {
+      const value = form[field] as number | undefined
+      if (value !== undefined && value <= 0) {
+        toast({ variant: 'destructive', title: 'Ошибка', description: 'Числовые параметры должны быть положительными' })
+        return
+      }
+    }
+
+    // 4. URL аватара (опционально)
+    if (form.avatar && !/^https?:\/\//.test(form.avatar)) {
+      toast({ variant: 'destructive', title: 'Ошибка', description: 'Ссылка на аватар должна начинаться с http:// или https://' })
+      return
+    }
+
     setSubmitting(true)
     try {
       await updateProfile(form)

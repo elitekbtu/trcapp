@@ -1,10 +1,10 @@
 from typing import Optional
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, constr
 
 
 class UserCreateAdmin(BaseModel):
     email: EmailStr
-    password: str
+    password: constr(min_length=8)
     is_admin: bool = False
     is_active: bool = True
 

@@ -80,6 +80,19 @@ const OutfitForm = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Client-side validation
+    if (!form.name.trim() || !form.style.trim()) {
+      toast({ variant: 'destructive', title: 'Ошибка', description: 'Название и стиль обязательны' })
+      return
+    }
+    const hasAnyItems = [form.top_ids, form.bottom_ids, form.footwear_ids, form.accessories_ids, form.fragrances_ids]
+      .some((arr) => arr && arr.length > 0)
+    if (!hasAnyItems) {
+      toast({ variant: 'destructive', title: 'Ошибка', description: 'Добавьте хотя бы один элемент в образ' })
+      return
+    }
+
     setSubmitting(true)
 
     try {
