@@ -1,15 +1,15 @@
-"""initial schema
+"""initial_schema
 
-Revision ID: 67b961723ab3
+Revision ID: 5e6e02c20aa8
 Revises: None
-Create Date: 2025-06-22 11:19:37.198132
+Create Date: 2025-06-23 08:03:21.783120
 
 """
 from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision = '67b961723ab3'
+revision = '5e6e02c20aa8'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -160,6 +160,21 @@ def upgrade():
     op.create_index(op.f('ix_user_view_history_item_id'), 'user_view_history', ['item_id'], unique=False)
     op.create_index(op.f('ix_user_view_history_user_id'), 'user_view_history', ['user_id'], unique=False)
     op.create_index(op.f('ix_user_view_history_viewed_at'), 'user_view_history', ['viewed_at'], unique=False)
+    op.create_table('cart_items',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.Column('variant_id', sa.Integer(), nullable=False),
+    sa.Column('quantity', sa.Integer(), nullable=False),
+    sa.Column('added_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
+    sa.CheckConstraint('quantity > 0', name='ck_cart_quantity_positive'),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['variant_id'], ['item_variants.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('user_id', 'variant_id', name='uq_cart_user_variant')
+    )
+    op.create_index(op.f('ix_cart_items_id'), 'cart_items', ['id'], unique=False)
+    op.create_index(op.f('ix_cart_items_user_id'), 'cart_items', ['user_id'], unique=False)
+    op.create_index(op.f('ix_cart_items_variant_id'), 'cart_items', ['variant_id'], unique=False)
     op.create_table('comments',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
@@ -232,6 +247,10 @@ def downgrade():
     op.drop_index(op.f('ix_comments_item_id'), table_name='comments')
     op.drop_index(op.f('ix_comments_id'), table_name='comments')
     op.drop_table('comments')
+    op.drop_index(op.f('ix_cart_items_variant_id'), table_name='cart_items')
+    op.drop_index(op.f('ix_cart_items_user_id'), table_name='cart_items')
+    op.drop_index(op.f('ix_cart_items_id'), table_name='cart_items')
+    op.drop_table('cart_items')
     op.drop_index(op.f('ix_user_view_history_viewed_at'), table_name='user_view_history')
     op.drop_index(op.f('ix_user_view_history_user_id'), table_name='user_view_history')
     op.drop_index(op.f('ix_user_view_history_item_id'), table_name='user_view_history')

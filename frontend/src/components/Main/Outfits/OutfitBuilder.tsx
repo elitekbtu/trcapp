@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, ArrowRight } from 'lucide-react'
+import { ArrowLeft, ArrowRight, X } from 'lucide-react'
 import { listItems } from '../../../api/items'
 import { type ItemOut } from '../../../api/schemas'
 import { Button } from '../../ui/button'
@@ -23,6 +23,7 @@ interface IndexState {
 const OutfitBuilder = () => {
   const [itemsByCat, setItemsByCat] = useState<Record<string, ItemOut[]>>({})
   const [indexByCat, setIndexByCat] = useState<IndexState>({})
+  const [selectedByCat, setSelectedByCat] = useState<Record<string, ItemOut[]>>({})
   const [loading, setLoading] = useState(true)
   const { t } = useTranslation()
 
@@ -35,12 +36,15 @@ const OutfitBuilder = () => {
         const results = await Promise.all(promises)
         const grouped: Record<string, ItemOut[]> = {}
         const idx: IndexState = {}
+        const sel: Record<string, ItemOut[]> = {}
         categoryConfig.forEach((c, i) => {
           grouped[c.key] = results[i]
           idx[c.key] = 0
+          sel[c.key] = []
         })
         setItemsByCat(grouped)
         setIndexByCat(idx)
+        setSelectedByCat(sel)
       } catch (err) {
         // eslint-disable-next-line no-console
         console.error(err)
@@ -61,6 +65,18 @@ const OutfitBuilder = () => {
     })
   }
 
+  const toggleSelect = (key: CategoryKey) => {
+    setSelectedByCat((prev) => {
+      const list = itemsByCat[key] || []
+      const currIdx = indexByCat[key] ?? 0
+      const item = list[currIdx]
+      if (!item) return prev
+      const already = prev[key]?.some((it) => it.id === item.id) ?? false
+      const updated = already ? prev[key].filter((it) => it.id !== item.id) : [...(prev[key] || []), item]
+      return { ...prev, [key]: updated }
+    })
+  }
+
   const mannequinUrl = '/maneken.jpg'
 
   if (loading) {
@@ -76,19 +92,19 @@ const OutfitBuilder = () => {
           alt="Mannequin"
           className="absolute inset-0 h-full w-full object-contain"
         />
-        {categoryConfig.map((c, i) => {
-          const list = itemsByCat[c.key] || []
-          const selected = list[indexByCat[c.key]]
-          if (!selected || !selected.image_url) return null
-          return (
-            <img
-              key={c.key}
-              src={selected.image_url}
-              alt={selected.name}
-              className="absolute inset-0 h-full w-full object-contain"
-              style={{ zIndex: i + 1 }}
-            />
-          )
+        {categoryConfig.flatMap((c, i) => {
+          const selectedList = selectedByCat[c.key] || []
+          return selectedList.map((sel, j) => (
+            sel.image_url ? (
+              <img
+                key={`${c.key}-${sel.id}`}
+                src={sel.image_url}
+                alt={sel.name}
+                className="absolute inset-0 h-full w-full object-contain"
+                style={{ zIndex: i + j + 1 }}
+              />
+            ) : null
+          ))
         })}
       </div>
 
@@ -97,7 +113,8 @@ const OutfitBuilder = () => {
         {categoryConfig.map((c) => {
           const list = itemsByCat[c.key] || []
           const idx = indexByCat[c.key]
-          const selected = list[idx]
+          const current = list[idx]
+          const selectedList = selectedByCat[c.key] || []
           return (
             <div key={c.key} className="flex items-center gap-4">
               <Button
@@ -112,19 +129,19 @@ const OutfitBuilder = () => {
 
               <div className="flex flex-1 items-center gap-4 overflow-hidden">
                 <span className="w-28 shrink-0 text-sm font-medium">{c.label}</span>
-                {selected ? (
-                  <>
-                    {selected.image_url ? (
+                {current ? (
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    {current.image_url ? (
                       <img
-                        src={selected.image_url}
-                        alt={selected.name}
+                        src={current.image_url}
+                        alt={current.name}
                         className="h-20 w-20 rounded object-cover"
                       />
                     ) : (
                       <div className="h-20 w-20 rounded bg-muted" />
                     )}
-                    <span className="truncate text-sm">{selected.name}</span>
-                  </>
+                    <span className="truncate text-sm">{current.name}</span>
+                  </div>
                 ) : (
                   <span className="text-sm text-muted-foreground">{t('outfitBuilder.noOptions')}</span>
                 )}
@@ -139,6 +156,39 @@ const OutfitBuilder = () => {
               >
                 <ArrowRight className="h-5 w-5" />
               </Button>
+
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={!current}
+                onClick={() => toggleSelect(c.key)}
+              >
+                {current && selectedList.some((it) => it.id === current.id) ? 'Убрать' : 'Добавить'}
+              </Button>
+
+              {selectedList.length > 0 && (
+                <div className="flex gap-1 overflow-x-auto">
+                  {selectedList.map((it) => (
+                    <div key={it.id} className="relative h-12 w-12 shrink-0 rounded">
+                      {it.image_url ? (
+                        <img src={it.image_url} alt={it.name} className="h-full w-full rounded object-cover" />
+                      ) : (
+                        <div className="h-full w-full rounded bg-muted" />
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedByCat((prev) => ({
+                          ...prev,
+                          [c.key]: prev[c.key].filter((x) => x.id !== it.id),
+                        }))}
+                        className="absolute -right-1 -top-1 rounded-full bg-red-500 p-0.5 text-white hover:bg-red-600"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )
         })}

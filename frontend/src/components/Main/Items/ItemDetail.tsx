@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { type CommentOut } from '../../../api/schemas'
+import { type CommentOut, type VariantOut } from '../../../api/schemas'
 import { listItemComments, addItemComment, likeComment, deleteItemComment } from '../../../api/items'
 import api from '../../../api/client'
 import { Button } from '../../ui/button'
@@ -29,6 +29,7 @@ interface Item {
   size?: string | null
   style?: string | null
   collection?: string | null
+  variants?: VariantOut[] | null
 }
 
 const ItemDetail = () => {
@@ -239,6 +240,41 @@ const ItemDetail = () => {
               </div>
             )}
           </div>
+
+          {/* Variants Section */}
+          {item.variants && item.variants.length > 0 && (
+            <div className="mb-6 space-y-4">
+              <h3 className="font-medium">Доступные варианты</h3>
+
+              {/* Responsive scroll container for small screens */}
+              <div className="w-full overflow-x-auto rounded-lg shadow-sm">
+                <div className="min-w-[36rem] overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-gray-50 dark:bg-gray-900">
+                      <tr>
+                        <th className="px-4 py-2 font-medium text-gray-700 dark:text-gray-300">Размер</th>
+                        <th className="px-4 py-2 font-medium text-gray-700 dark:text-gray-300">Цвет</th>
+                        <th className="px-4 py-2 font-medium text-gray-700 dark:text-gray-300">Цена</th>
+                        <th className="px-4 py-2 font-medium text-gray-700 dark:text-gray-300">В наличии</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+                      {item.variants.map((v) => (
+                        <tr key={v.id} className="hover:bg-gray-50 dark:hover:bg-gray-900">
+                          <td className="whitespace-nowrap px-4 py-2 text-gray-900 dark:text-gray-100">{v.size ?? '—'}</td>
+                          <td className="whitespace-nowrap px-4 py-2 text-gray-900 dark:text-gray-100">{v.color ?? '—'}</td>
+                          <td className="whitespace-nowrap px-4 py-2 text-gray-900 dark:text-gray-100">
+                            {v.price !== null && v.price !== undefined ? `${v.price.toLocaleString()}₸` : '—'}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-2 text-gray-900 dark:text-gray-100">{v.stock ?? '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
 
           {item.description && (
             <div className="mb-6">
