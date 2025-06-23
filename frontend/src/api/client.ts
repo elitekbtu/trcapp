@@ -26,12 +26,11 @@ export const clearStoredTokens = () => {
   localStorage.removeItem(REFRESH_KEY)
 }
 
-// Create axios instance
+
 const api = axios.create({
   baseURL,
 })
 
-// Request interceptor: attach access token
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const { access } = getStoredTokens()
   if (access && config.headers) {

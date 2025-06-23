@@ -1,8 +1,12 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import api from '../../../api/client'
 import { Button } from '../../ui/button'
-import { Heart } from 'lucide-react'
+import { Heart, Sparkles } from 'lucide-react'
+import { Card, CardContent, CardHeader } from '../../ui/card'
+import { Textarea } from '../../ui/textarea'
+import { Skeleton } from '../../ui/skeleton'
 import { type OutfitCommentOut } from '../../../api/schemas'
 import {
   toggleFavoriteOutfit,
@@ -114,8 +118,29 @@ const OutfitDetail = () => {
     })
   }, [outfit])
 
-  if (loading) return <div className="text-center py-8">Загрузка...</div>
-  if (!outfit) return <div className="text-center py-8">Образ не найден</div>
+  if (loading) return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="mb-8 space-y-4">
+        <Skeleton className="h-8 w-1/3" />
+        <Skeleton className="h-4 w-1/6" />
+      </div>
+      <div className="grid gap-8 md:grid-cols-2">
+        <Skeleton className="aspect-[3/4] w-full rounded-lg" />
+        <div className="space-y-4">
+          <Skeleton className="h-4 w-2/3" />
+          <Skeleton className="h-4 w-1/3" />
+          <Skeleton className="h-10 w-32" />
+        </div>
+      </div>
+    </div>
+  )
+  if (!outfit) return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="container mx-auto px-4 py-16 text-center">
+      <Sparkles className="mx-auto mb-4 h-16 w-16 text-muted-foreground" />
+      <h3 className="mb-2 font-display text-xl font-semibold">Образ не найден</h3>
+      <p className="text-muted-foreground">Возможно, образ был удалён или перемещён.</p>
+    </motion.div>
+  )
 
   const categories = [
     { label: 'Верх', items: outfit.tops },
@@ -208,69 +233,123 @@ const OutfitDetail = () => {
       </div>
 
       {/* Comments */}
-      <div className="mt-16 max-w-2xl">
-        <h2 className="mb-4 text-xl font-medium">Комментарии</h2>
-        <div className="mb-6 space-y-2">
-          <textarea
-            className="w-full rounded border px-3 py-2 text-sm"
-            placeholder="Ваш отзыв..."
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            rows={3}
-          />
-          <div className="flex items-center justify-between">
-            <RatingStars value={rating} onChange={setRating} />
-            <Button onClick={handleAddComment}>Отправить</Button>
+      <motion.section
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6, delay: 0.3 }}
+        className="mt-16 max-w-2xl"
+      >
+        <h2 className="mb-6 font-display text-2xl font-bold tracking-tight">Отзывы</h2>
+
+        {/* Add comment form */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="mb-8 rounded-lg border p-6"
+        >
+          <h3 className="mb-4 font-medium">Оставить отзыв</h3>
+          <div className="space-y-4">
+            <div>
+              <p className="mb-2 text-sm text-muted-foreground">Ваша оценка</p>
+              <RatingStars value={rating} onChange={setRating} />
+            </div>
+            <Textarea
+              placeholder="Поделитесь впечатлениями об этом образе..."
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              rows={4}
+            />
+            <div className="flex justify-end">
+              <Button onClick={handleAddComment} disabled={!newComment.trim()}>
+                Отправить отзыв
+              </Button>
+            </div>
           </div>
-        </div>
-        {comments.length === 0 && <p className="text-muted-foreground">Нет комментариев</p>}
-        <ul className="space-y-4">
-          {comments.map((c) => (
-            <li key={c.id} className="rounded border p-3">
-              <p className="mb-1 text-sm whitespace-pre-line">{c.content}</p>
-              {c.rating !== undefined && c.rating !== null && (
-                <RatingStars value={c.rating} className="mb-1" />
-              )}
-              <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                <span>{new Date(c.created_at).toLocaleString()}</span>
-                <button
-                  className="flex items-center gap-1 hover:text-primary"
-                  onClick={async () => {
-                    if (!id || !user) return;
-                    try {
-                      await likeOutfitComment(Number(id), c.id);
-                      // Refetch comments to get updated like count
-                      const updatedComments = await listOutfitComments(Number(id));
-                      setComments(updatedComments);
-                    } catch (err) {
-                      console.error(err);
-                    }
-                  }}
-                >
-                  <Heart className="h-3 w-3" /> {c.likes}
-                </button>
-                {(user?.id === c.user_id || isAdmin) && (
-                  <button
-                    className="text-xs text-red-500 hover:underline"
-                    onClick={async () => {
-                      if (!id) return
-                      if (!confirm('Удалить комментарий?')) return
-                      try {
-                        await deleteOutfitComment(Number(id), c.id)
-                        setComments((prev) => prev.filter((x) => x.id !== c.id))
-                      } catch (err) {
-                        console.error(err)
-                      }
-                    }}
-                  >
-                    Удалить
-                  </button>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
-      </div>
+        </motion.div>
+
+        {/* Comments list */}
+        {comments.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6 }}
+            className="rounded-xl border p-8 text-center"
+          >
+            <Sparkles className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+            <h3 className="mb-2 font-medium">Пока нет отзывов</h3>
+            <p className="text-muted-foreground">Будьте первым, кто оставит отзыв об этом образе</p>
+          </motion.div>
+        ) : (
+          <ul className="space-y-4">
+            {comments.map((c) => (
+              <Card key={c.id} className="overflow-hidden">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">Пользователь</p>
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(c.created_at).toLocaleDateString('ru-RU', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        })}
+                      </p>
+                    </div>
+                    {(user?.id === c.user_id || isAdmin) && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-red-500 hover:text-red-600"
+                        onClick={async () => {
+                          if (!id) return
+                          if (!confirm('Удалить комментарий?')) return
+                          try {
+                            await deleteOutfitComment(Number(id), c.id)
+                            setComments((prev) => prev.filter((x) => x.id !== c.id))
+                          } catch (err) {
+                            console.error(err)
+                          }
+                        }}
+                      >
+                        <Heart className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {c.rating !== undefined && c.rating !== null && (
+                    <div className="mb-4">
+                      <RatingStars value={c.rating} />
+                    </div>
+                  )}
+                  <p className="mb-4 whitespace-pre-line text-muted-foreground">{c.content}</p>
+                  <div className="flex items-center gap-4">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex items-center gap-2"
+                      onClick={async () => {
+                        if (!id || !user) return
+                        try {
+                          await likeOutfitComment(Number(id), c.id)
+                          const updated = await listOutfitComments(Number(id))
+                          setComments(updated)
+                        } catch (err) {
+                          console.error(err)
+                        }
+                      }}
+                    >
+                      <Heart className={`h-4 w-4 ${c.likes > 0 ? 'fill-primary text-primary' : ''}`} />
+                      <span>{c.likes}</span>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </ul>
+        )}
+      </motion.section>
     </div>
   )
 }
